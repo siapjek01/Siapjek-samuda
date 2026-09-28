@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SiapJek - Aplikasi Pelanggan</title>
+  
+  <!-- TAILWIND CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FONT AWESOME -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- SWIPER CSS & JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+  
+  <!-- GOOGLE MAPS API (PETA, PLACES, & DIRECTIONS) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDfIDw6sjKoT-XuNYf8AUMMsQSFZ_jvScg&libraries=places,geometry"></script>
+
+  <!-- FIREBASE 10 COMPAT -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <!-- ALPINE JS -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .swiper-pagination-bullet { background: #a7f3d0 !important; opacity: 0.5; width: 6px; height: 6px; }
+    .swiper-pagination-bullet-active { background: #ffffff !important; opacity: 1; width: 14px; border-radius: 4px; }
+    @keyframes badgeBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+    .animate-badge { animation: badgeBounce 1.5s infinite ease-in-out; }
+    .menu-button{position:relative;display:flex;flex-direction:column;align-items:center;background:transparent;border:0;padding:0;cursor:pointer}
+    .menu-icon{width:60px;height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 10px rgba(0,0,0,.08);transition:transform .18s ease}
+    .menu-button:active .menu-icon{transform:scale(.92)}
+    .menu-title{font-size:12px;font-weight:700;color:#374151;margin-top:6px}
+    .fullscreen-page{ position:fixed; inset:0; z-index:80; width:100vw; height:100vh; overflow-y:auto; background:#f5f7fb; padding:16px 16px 80px; }
+    .container-box{ width:100%; max-width:760px; margin:0 auto; }
+    #google-map-checkout { height: 260px; width: 100%; border-radius: 14px; z-index: 1; background: #e2e8f0; }
+    #driver-track-map { height: 300px; width: 100%; border-radius: 14px; z-index: 1; background: #e2e8f0; }
+    @keyframes flyUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 50% { opacity: 0.9; transform: translateY(-22px) scale(1.2); } 100% { opacity: 0; transform: translateY(-40px) scale(0.8); } }
+    .fly-number { position: absolute; top: -6px; right: 2px; font-weight: 900; font-size: 11px; color: #2563eb; pointer-events: none; animation: flyUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; z-index: 50; background: #eff6ff; border: 1px solid #bfdbfe; padding: 1px 6px; border-radius: 9999px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    @keyframes motorDrive { 0%, 100% { transform: translateY(0) rotate(0deg); } 25% { transform: translateY(-2px) rotate(-1deg); } 75% { transform: translateY(1px) rotate(1deg); } }
+    .animate-drive { animation: motorDrive 1.2s infinite ease-in-out; }
+    @keyframes promoPulse { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.04); } }
+    .animate-promo-badge { animation: promoPulse 1.8s infinite ease-in-out; }
+    .running-text-container { width: 100%; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
+    .running-text-content { display: inline-block; padding-left: 100%; animation: marquee-css 16s linear infinite; will-change: transform; }
+    @keyframes marquee-css { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+  </style>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen text-slate-800 text-sm" x-data="appSiapJek" x-init="initApp()">
+
+  <div class="w-full max-w-md bg-slate-50 min-h-screen shadow-2xl relative pb-28 flex flex-col justify-between font-sans overflow-hidden text-slate-800">
+  
+    <!-- OVERLAY MAINTENANCE -->
+    <div x-show="isMaintenance" x-cloak class="fixed inset-0 bg-slate-900 z-[99999] flex flex-col items-center justify-center p-6 text-white text-center">
+      <div class="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center text-3xl font-black mb-3 shadow-xl animate-bounce">🚧</div>
+      <h1 class="text-lg font-black mb-1.5">Aplikasi Sedang Perbaikan</h1>
+      <p class="text-sm text-slate-300 max-w-xs mb-5 leading-relaxed" x-text="maintenanceMessage">Kami sedang melakukan peningkatan sistem untuk kenyamanan Anda.</p>
+    </div>
+
+    <!-- POP-UP NOTIFIKASI MELAYANG -->
+    <div x-show="showFloatingPopup" x-cloak style="display:none;" 
+         class="fixed top-4 inset-x-4 z-[99999] flex justify-center transition-all transform duration-300">
+      <div class="bg-white/95 backdrop-blur-md w-full max-w-sm rounded-2xl p-4 shadow-2xl border border-emerald-100 flex items-start gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg shrink-0 shadow-xs">
+          <i :class="popupData.icon || 'fa-solid fa-bell'"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-black text-slate-800 truncate" x-text="popupData.title"></h4>
+            <span class="text-[9px] text-slate-400">Baru saja</span>
+          </div>
+          <p class="text-xs text-slate-600 mt-0.5 line-clamp-2 leading-relaxed" x-text="popupData.message"></p>
+          
+          <div class="mt-2.5 flex gap-2">
+            <button @click="handlePopupAction()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black px-3 py-1.5 rounded-xl shadow-xs active:scale-95 transition-transform" x-text="popupData.btnText || 'Lihat'"></button>
+            <button @click="showFloatingPopup = false" class="bg-slate-100 text-slate-600 text-[11px] font-bold px-3 py-1.5 rounded-xl">Tutup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL NOTIFIKASI KUSTOM -->
+    <div x-show="showAppAlert" x-cloak style="display:none;" class="fixed inset-0 bg-black/60 z-[99999] flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl text-center space-y-4">
+        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl font-black mx-auto"><i class="fa-solid fa-circle-info"></i></div>
+        <p class="text-xs font-bold text-slate-700 leading-relaxed" x-text="appAlertMessage"></p>
+        <button @click="showAppAlert = false" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-2.5 rounded-xl shadow-md">OK</button>
+      </div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div x-show="!isLoggedIn" class="fullscreen-page flex flex-col justify-center items-center p-5 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 text-white z-50">
+      <div class="w-full max-w-sm bg-white text-slate-800 p-6 rounded-3xl shadow-2xl space-y-4 text-center">
+        <div class="w-16 h-16 bg-emerald-600 text-white rounded-2xl mx-auto flex items-center justify-center text-2xl font-black shadow-lg">SJ</div>
+        
+        <div x-show="!showRegisterCard">
+          <div>
+            <h2 class="text-base font-black text-slate-800">Masuk ke SiapJek</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Masukkan ID Pelanggan dari Admin.</p>
+          </div>
+          <div class="space-y-3 text-left mt-3.5">
+            <label class="text-xs font-bold text-slate-700 block">ID Pelanggan:</label>
+            <input type="text" x-model="loginId" placeholder="Contoh: PLG-4829" @keyup.enter="loginWithId()" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl font-black text-center text-slate-800 text-sm uppercase tracking-widest outline-none focus:ring-2 focus:ring-emerald-500">
+            <button @click="loginWithId()" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-black py-3 rounded-xl shadow-md active:scale-95 transition-transform mt-1">Masuk Aplikasi ➔</button>
+            <button @click="showRegisterCard = true" class="w-full text-slate-500 text-xs font-bold py-1.5 underline text-center block">Belum punya ID? Minta ke Admin</button>
+          </div>
+        </div>
+
+        <div x-show="showRegisterCard" x-cloak class="space-y-3 text-left">
+          <div>
+            <h2 class="text-base font-black text-slate-800">Daftar Akun Baru</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Isi data di bawah untuk meminta ID Pelanggan ke Admin.</p>
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-700 block">Nama Lengkap:</label>
+            <input type="text" x-model="regName" placeholder="Contoh: Budi Santoso" class="w-full p-3 text-sm bg-slate-50 border border-slate-300 rounded-xl outline-none font-bold focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-700 block">Nomor WhatsApp:</label>
+            <input type="tel" x-model="regPhone" placeholder="0812xxxxxx" class="w-full p-3 text-sm bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <button @click="requestAdminId()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black py-3 rounded-xl shadow-md active:scale-95 transition-transform mt-1 flex items-center justify-center gap-2">
+             <i class="fa-brands fa-whatsapp text-base"></i> Kirim & Minta ID ke Admin
+          </button>
+          <button @click="showRegisterCard = false; regName = ''; regPhone = '';" class="w-full text-slate-400 text-xs font-bold py-1 text-center block">← Kembali ke Login</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KONTEN UTAMA -->
+    <div x-show="isLoggedIn" class="flex flex-col justify-between flex-1" x-data="{ subMenuLainnya: null }">
+      <div class="pb-6">
+        <!-- HEADER -->
+        <div class="relative bg-gradient-to-br from-emerald-800 via-emerald-700 to-emerald-600 text-white rounded-b-[2.5rem] shadow-lg pt-4 pb-8 px-4" x-show="currentPage === 'home' && searchKeyword.trim() === ''">
+          <div class="flex items-center justify-between gap-1.5 pb-3">
+            <div class="flex items-center gap-2 min-w-0 max-w-[52%]">
+              <div class="relative shrink-0">
+                <img :src="userPhoto" class="w-10 h-10 rounded-full border-2 border-white/80 object-cover shadow-xs">
+                <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border border-white rounded-full"></span>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1"><span class="text-[11px] text-emerald-100 font-medium">Hai,</span><span class="bg-emerald-900/40 text-emerald-200 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">Pelanggan</span></div>
+                <h1 class="text-xs font-black text-white truncate drop-shadow-xs mt-0.5" x-text="userName"></h1>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-1.5 shrink-0">
+              <div class="relative flex items-center bg-white/20 rounded-xl px-2.5 py-1.5 border border-white/30 backdrop-blur-xs">
+                <i class="fa-solid fa-magnifying-glass text-emerald-200 text-xs mr-1.5"></i>
+                <input type="text" x-model.debounce.300ms="searchKeyword" placeholder="Cari..." class="w-20 text-xs bg-transparent text-white placeholder-emerald-100/70 outline-none">
+                <button x-show="searchKeyword.trim() !== ''" @click="searchKeyword = ''" class="text-emerald-200 text-xs ml-1 font-bold">✕</button>
+              </div>
+              <button @click="hubungiDriverAktif()" class="relative bg-white/10 hover:bg-white/20 p-2 rounded-xl backdrop-blur-xs transition-colors" title="Chat Driver Aktif">
+                <i class="fa-solid fa-motorcycle text-emerald-200 text-sm"></i>
+                <template x-if="unreadDriverChatCount > 0">
+                  <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-emerald-700 animate-badge" x-text="unreadDriverChatCount"></span>
+                </template>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-2 flex justify-between items-center gap-2 relative">
+            <div class="flex-1 min-w-0 space-y-1.5 z-10">
+              <span :class="topBanner.tagColor" class="text-[10px] font-black px-2.5 py-0.5 rounded text-white shadow-xs uppercase tracking-wider inline-block animate-badge" x-text="topBanner.tag"></span>
+              <h2 class="text-base font-black text-white line-clamp-2 leading-snug drop-shadow-sm" x-text="topBanner.title"></h2>
+              <p class="text-xs text-emerald-100 font-medium line-clamp-1 opacity-95" x-text="topBanner.desc"></p>
+            </div>
+            <div class="shrink-0 w-28 h-22 relative z-10 flex items-center justify-center">
+              <img :src="topBanner.img" class="w-full h-full object-contain animate-drive drop-shadow-md">
+            </div>
+          </div>
+        </div>
+        
+        <!-- SALDO -->
+        <div class="px-4 -mt-5 relative z-20" x-show="currentPage === 'home' && searchKeyword.trim() === ''">
+          <div class="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-md flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" @click="showMutasiModal = true" title="Klik untuk lihat mutasi">
+              <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base shadow-xs"><i class="fa-solid fa-wallet"></i></div>
+              <div>
+                <div class="text-xs font-bold text-gray-500 flex items-center gap-1">Saldo SiapPay <i class="fa-solid fa-clock-rotate-left text-[10px] text-emerald-600"></i></div>
+                <div class="text-sm font-black text-gray-800 mt-0.5" x-text="'Rp ' + (userSaldo || 0).toLocaleString('id-ID')"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button @click="bukaModalTopUp()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-black px-3 py-2 rounded-xl shadow-xs">Top Up</button>
+              <button @click="bukaModalTarikSaldo()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-3 py-2 rounded-xl shadow-xs">Tarik</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RUNNING TEXT -->
+        <div class="px-4 mt-3.5" x-show="currentPage === 'home' && searchKeyword.trim() === ''">
+          <div class="text-emerald-800 bg-emerald-50/80 border border-emerald-100 px-3.5 py-2 rounded-xl text-xs flex items-center gap-2.5 overflow-hidden">
+            <i class="fa-solid fa-bullhorn text-emerald-600 shrink-0 text-sm"></i>
+            <div class="running-text-container">
+              <div class="running-text-content font-bold text-xs" x-text="runningText"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GRID MENU -->
+        <div class="px-4 mt-4" x-show="currentPage === 'home' && searchKeyword.trim() === ''">
+          <div class="grid grid-cols-4 gap-y-4 gap-x-2 text-center">
+            <button @click="bukaFormMotorDirect()" class="menu-button relative">
+              <span class="absolute -top-2 z-10 bg-gradient-to-r from-red-600 to-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-md animate-promo-badge border border-white uppercase tracking-wider" x-text="'Mulai ' + (systemSettings.tarif_dasar_motor >= 1000 ? (systemSettings.tarif_dasar_motor / 1000) + 'k' : systemSettings.tarif_dasar_motor)"></span>
+              <span class="menu-icon bg-emerald-100 text-emerald-600"><i class="fa-solid fa-motorcycle"></i></span><span class="menu-title">Motor</span>
+            </button>
+            <button @click="bukaFormJastipDirect()" class="menu-button relative">
+              <span class="absolute -top-2 z-10 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-md animate-promo-badge border border-white uppercase tracking-wider" x-text="'Mulai ' + (systemSettings.tarif_dasar_jastip >= 1000 ? (systemSettings.tarif_dasar_jastip / 1000) + 'k' : systemSettings.tarif_dasar_jastip)"></span>
+              <span class="menu-icon bg-orange-100 text-orange-500"><i class="fa-solid fa-bag-shopping"></i></span><span class="menu-title">Jastip</span>
+            </button>
+            <button @click="openCategory('Makanan')" class="menu-button"><span class="menu-icon bg-red-100 text-red-500"><i class="fa-solid fa-bowl-food"></i></span><span class="menu-title">Makanan</span></button>
+            <button @click="openCategory('Minuman')" class="menu-button"><span class="menu-icon bg-amber-100 text-amber-600"><i class="fa-solid fa-mug-hot"></i></span><span class="menu-title">Minuman</span></button>
+            <button @click="openCategory('Market')" class="menu-button"><span class="menu-icon bg-blue-100 text-blue-600"><i class="fa-solid fa-store"></i></span><span class="menu-title">Market</span></button>
+            <button @click="openCategory('Pasar Samuda')" class="menu-button"><span class="menu-icon bg-emerald-100 text-emerald-700"><i class="fa-solid fa-basket-shopping"></i></span><span class="menu-title">Pasar Samuda</span></button>
+            <button @click="openCategory('Travel')" class="menu-button"><span class="menu-icon bg-purple-100 text-purple-600"><i class="fa-solid fa-car"></i></span><span class="menu-title">Travel</span></button>
+            <button @click="openCategory('Lainnya')" class="menu-button"><span class="menu-icon bg-rose-100 text-rose-600"><i class="fa-solid fa-ellipsis"></i></span><span class="menu-title">Lainnya</span></button>
+          </div>
+        </div>
+
+        <!-- PROMO -->
+        <div class="px-4 mt-4" x-show="currentPage === 'home' && searchKeyword.trim() === ''">
+          <div class="flex justify-between items-center mb-2"><h4 class="text-xs font-black text-slate-800 uppercase tracking-wide">🔥 Promo & Info Terbaru</h4></div>
+          <div class="swiper myPromoSwiper w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white">
+            <div class="swiper-wrapper">
+              <template x-for="p in adminPromos" :key="p.id">
+                <div class="swiper-slide relative h-32 overflow-hidden">
+                  <img :src="p.img" class="w-full h-full object-cover">
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
+                  <div class="absolute bottom-2.5 left-3.5 right-3.5 text-white">
+                    <span class="text-[9px] bg-red-500 font-extrabold px-2 py-0.5 rounded text-white">PROMO ADMIN</span>
+                    <h5 class="text-xs font-black line-clamp-1 mt-1" x-text="p.title"></h5>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div class="swiper-pagination promo-pagination !bottom-1.5"></div>
+          </div>
+        </div>
+        
+        <!-- TAB PRODUK -->
+        <div class="px-4 mt-4" x-show="currentPage === 'home' && searchKeyword.trim() === ''">
+          <div class="grid grid-cols-4 gap-1.5 bg-slate-200/70 p-1.5 rounded-2xl">
+            <button @click="activeTab = 'terbaru'" :class="activeTab === 'terbaru' ? 'bg-emerald-600 text-white font-black' : 'text-slate-600 font-bold'" class="py-1.5 text-xs rounded-xl text-center transition-all">✨ Terbaru</button>
+            <button @click="activeTab = 'terlaris'" :class="activeTab === 'terlaris' ? 'bg-emerald-600 text-white font-black' : 'text-slate-600 font-bold'" class="py-1.5 text-xs rounded-xl text-center transition-all">🔥 Terlaris</button>
+            <button @click="activeTab = 'terdekat'" :class="activeTab === 'terdekat' ? 'bg-emerald-600 text-white font-black' : 'text-slate-600 font-bold'" class="py-1.5 text-xs rounded-xl text-center transition-all">📍 Terdekat</button>
+            <button @click="activeTab = 'terpromo'" :class="activeTab === 'terpromo' ? 'bg-emerald-600 text-white font-black' : 'text-slate-600 font-bold'" class="py-1.5 text-xs rounded-xl text-center transition-all">🏷️ Terpromo</button>
+          </div>
+
+          <div class="flex items-stretch gap-3 overflow-x-auto no-scrollbar mt-3 pt-1 pb-2">
+            <template x-for="product in getFilteredTabProducts()" :key="product.id">
+              <div class="w-40 shrink-0 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between overflow-hidden p-2.5 group relative"
+                   x-data="{ get merchantObj() { return getMerchantByTokoId(product.tokoId) } }"
+                   :class="(merchantObj && !merchantObj.is_open) || !product.isAvailable ? 'opacity-60 grayscale' : ''">
+                   
+                <div @click="bukaDetailProduk(product)" class="cursor-pointer">
+                  <div class="w-full h-32 rounded-xl overflow-hidden bg-slate-50 relative mb-2 border border-slate-100">
+                    <img :src="product.img" class="w-full h-full object-cover">
+                    <span class="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase" x-text="getTabLabel()"></span>
+                    
+                    <div class="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <i class="fa-solid fa-star text-amber-400"></i>
+                      <span x-text="product.rating || '4.8'"></span>
+                    </div>
+
+                    <div class="absolute bottom-1.5 left-1.5 bg-emerald-700/90 text-white text-xs font-black px-2 py-0.5 rounded-md">
+                      <span x-text="product.priceFormatted"></span>
+                    </div>
+
+                    <div x-show="merchantObj && !merchantObj.is_open" class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span class="text-white text-xs font-black bg-red-600 px-2.5 py-1 rounded shadow-lg animate-pulse">TUTUP</span>
+                    </div>
+                    <div x-show="merchantObj && merchantObj.is_open && !product.isAvailable" class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span class="text-white text-xs font-black bg-slate-800 px-2.5 py-1 rounded shadow-lg">HABIS</span>
+                    </div>
+                  </div>
+                  <div class="px-0.5">
+                    <h4 class="text-xs font-black text-slate-800 line-clamp-1 leading-snug" x-text="product.name"></h4>
+                    <p class="text-[10px] text-slate-400 font-medium line-clamp-1 mt-0.5" x-text="product.description || 'Menu terfavorit'"></p>
+                    <p class="text-[9px] font-bold text-slate-500 mt-1" x-text="'Terjual ' + (product.sold_count || 0) + '+'"></p>
+                  </div>
+                </div>
+                
+                <div class="mt-2.5 pt-2 border-t border-slate-100 w-full">
+                  <div class="flex items-center gap-1.5 w-full">
+                    <button @click="merchantObj && merchantObj.is_open && product.isAvailable ? addToCart(product) : showAlert('⚠️ Produk tidak dapat dipesan saat ini')" :disabled="(merchantObj && !merchantObj.is_open) || !product.isAvailable" class="relative w-8 h-8 bg-blue-50 text-blue-600 rounded-xl text-xs font-extrabold flex items-center justify-center disabled:opacity-50">
+                      <i class="fa-solid fa-cart-plus"></i>
+                      <template x-for="badge in flyingBadges.filter(b => b.productId === product.id)" :key="badge.id"><span class="fly-number">+1</span></template>
+                    </button>
+                    <button @click="bukaDetailProduk(product)" class="flex-1 h-8 bg-emerald-600 text-white rounded-xl text-xs font-black flex items-center justify-center shadow-xs">
+                      <span>Pesan</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- SEARCH SCREEN -->
+        <section x-show="currentPage === 'home' && searchKeyword.trim() !== ''" class="fullscreen-page pt-4">
+          <div class="container-box space-y-3.5">
+            <div class="flex items-center justify-between bg-white p-3 rounded-2xl border shadow-xs">
+              <div class="flex items-center gap-2.5 flex-1 mr-2">
+                <i class="fa-solid fa-magnifying-glass text-emerald-600 text-sm"></i>
+                <input type="text" x-model.debounce.300ms="searchKeyword" placeholder="Cari makanan, minuman..." class="w-full text-xs font-bold outline-none bg-transparent">
+              </div>
+              <button @click="searchKeyword = ''" class="text-xs font-extrabold bg-slate-100 text-slate-600 px-3.5 py-2 rounded-xl">Batal</button>
+            </div>
+
+            <div class="flex justify-between items-center px-1">
+              <h3 class="text-xs font-black text-slate-800">Hasil Pencarian untuk: "<span class="text-emerald-600" x-text="searchKeyword"></span>"</h3>
+              <span class="text-xs font-bold text-slate-400" x-text="getFilteredTabProducts().length + ' Produk'"></span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <template x-for="product in getFilteredTabProducts()" :key="product.id">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3 flex flex-col justify-between"
+                     x-data="{ get merchantObj() { return getMerchantByTokoId(product.tokoId) } }"
+                     :class="(merchantObj && !merchantObj.is_open) || !product.isAvailable ? 'opacity-60 grayscale' : ''">
+                  
+                  <div @click="bukaDetailProduk(product)" class="cursor-pointer">
+                    <div class="w-full h-36 rounded-xl overflow-hidden bg-slate-50 relative mb-2.5 border border-slate-100">
+                      <img :src="product.img" class="w-full h-full object-cover">
+                      
+                      <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                        <i class="fa-solid fa-star text-amber-400"></i>
+                        <span x-text="product.rating || '4.8'"></span>
+                      </div>
+
+                      <div class="absolute bottom-2 left-2 bg-emerald-700 text-white text-xs font-black px-2.5 py-1 rounded-md shadow-xs">
+                        <span x-text="product.priceFormatted"></span>
+                      </div>
+
+                      <div x-show="merchantObj && !merchantObj.is_open" class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="text-white text-xs font-black bg-red-600 px-3 py-1 rounded shadow-lg animate-pulse">TUTUP</span>
+                      </div>
+                      <div x-show="merchantObj && merchantObj.is_open && !product.isAvailable" class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="text-white text-xs font-black bg-slate-800 px-3 py-1 rounded shadow-lg">STOK HABIS</span>
+                      </div>
+                    </div>
+
+                    <h4 class="text-sm font-black text-slate-800 line-clamp-1 leading-snug" x-text="product.name"></h4>
+                    <p class="text-xs font-bold text-emerald-600 truncate mt-0.5" x-text="merchantObj ? merchantObj.name : 'Toko'"></p>
+                    <p class="text-xs text-slate-400 font-normal mt-1 line-clamp-1 leading-tight" x-text="product.description || 'Sangat lezat dan higienis.'"></p>
+                    <p class="text-[9px] font-bold text-slate-500 mt-1" x-text="'Terjual ' + (product.sold_count || 0) + '+'"></p>
+                  </div>
+                  
+                  <div class="mt-3 pt-2.5 border-t border-slate-100 w-full">
+                    <div class="flex items-center gap-2 w-full">
+                      <button @click="merchantObj && merchantObj.is_open && product.isAvailable ? addToCart(product) : showAlert('⚠️ Produk sedang tidak tersedia')" :disabled="(merchantObj && !merchantObj.is_open) || !product.isAvailable" class="relative w-9 h-9 bg-blue-50 text-blue-600 rounded-xl text-xs font-extrabold flex items-center justify-center disabled:opacity-50">
+                        <i class="fa-solid fa-cart-plus text-sm"></i>
+                        <template x-for="badge in flyingBadges.filter(b => b.productId === product.id)" :key="badge.id"><span class="fly-number">+1</span></template>
+                      </button>
+                      <button @click="bukaDetailProduk(product)" class="flex-1 h-9 bg-emerald-600 text-white rounded-xl text-xs font-black flex items-center justify-center shadow-xs">
+                        <span>Pesan</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <template x-if="getFilteredTabProducts().length === 0">
+              <div class="text-center py-16 text-slate-400 space-y-2.5">
+                <i class="fa-solid fa-magnifying-glass text-4xl text-slate-300"></i>
+                <p class="text-xs font-bold">Produk yang Anda cari tidak ditemukan.</p>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- PAGE LAINNYA -->
+        <section x-show="currentPage === 'lainnya'" x-cloak class="fullscreen-page">
+          <div class="container-box space-y-4">
+            <div class="flex justify-between items-center mb-1">
+              <button @click="goHome(); subMenuLainnya = null;" class="text-xs font-bold text-blue-600"><i class="fa-solid fa-arrow-left"></i> Beranda</button>
+              <span class="text-xs font-black text-slate-700 bg-white px-3.5 py-1.5 rounded-full border shadow-xs">🚀 Pendaftaran Mitra & Driver</span>
+            </div>
+
+            <div class="bg-gradient-to-br from-emerald-800 to-emerald-600 text-white p-4 rounded-2xl shadow-md space-y-2">
+              <h3 class="text-sm font-black">Ingin Bergabung dengan SiapJek?</h3>
+              <p class="text-xs text-emerald-100">Pilih salah satu menu di bawah ini untuk mendaftarkan diri Anda sebagai Driver atau mendaftarkan Toko Anda.</p>
+            </div>
+
+            <div x-show="!subMenuLainnya" class="space-y-3">
+              <div @click="subMenuLainnya = 'driver'" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-emerald-400 transition-colors">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-11 h-11 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-lg"><i class="fa-solid fa-motorcycle"></i></div>
+                  <div>
+                    <h4 class="text-xs font-black text-slate-800">Daftar Jadi Driver</h4>
+                    <p class="text-xs text-slate-500 mt-0.5">Atur waktu kerja sendiri dan jemput orderan.</p>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i>
+              </div>
+
+              <div @click="subMenuLainnya = 'mitra'" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-orange-400 transition-colors">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-11 h-11 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center text-lg"><i class="fa-solid fa-store"></i></div>
+                  <div>
+                    <h4 class="text-xs font-black text-slate-800">Daftar Jadi Mitra / Warung</h4>
+                    <p class="text-xs text-slate-500 mt-0.5">Jual makanan, minuman, atau produk Anda secara online.</p>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i>
+              </div>
+            </div>
+
+            <div x-show="subMenuLainnya === 'driver'" x-cloak class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3.5" x-data="{ n: '', h: '', p: '' }">
+              <div class="flex justify-between items-center border-b pb-2.5">
+                <h4 class="text-xs font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-motorcycle text-emerald-600 text-base"></i> Formulir Pendaftaran Driver</h4>
+                <button @click="subMenuLainnya = null" class="text-xs font-bold text-blue-600">← Kembali</button>
+              </div>
+              <div class="space-y-2.5 pt-1">
+                <input type="text" x-model="n" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Nama Lengkap">
+                <input type="tel" x-model="h" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Nomor WhatsApp (Contoh: 0812...)">
+                <input type="text" x-model="p" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Nomor Plat Kendaraan (Contoh: KH 1234 XX)">
+                <button @click="kirimPendaftaranDriverWA(n, h, p)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-3 rounded-xl shadow-md active:scale-95 transition-transform">Kirim Pendaftaran Driver via WA</button>
+              </div>
+            </div>
+
+            <div x-show="subMenuLainnya === 'mitra'" x-cloak class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3.5" x-data="{ p: '', t: '', h: '', a: '' }">
+              <div class="flex justify-between items-center border-b pb-2.5">
+                <h4 class="text-xs font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-store text-orange-500 text-base"></i> Formulir Pendaftaran Mitra</h4>
+                <button @click="subMenuLainnya = null" class="text-xs font-bold text-blue-600">← Kembali</button>
+              </div>
+              <div class="space-y-2.5 pt-1">
+                <input type="text" x-model="p" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Nama Pemilik Toko">
+                <input type="text" x-model="t" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Nama Warung / Toko Anda">
+                <input type="tel" x-model="h" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Nomor WhatsApp Toko">
+                <textarea x-model="a" rows="2.5" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Alamat Lengkap Toko / Warung"></textarea>
+                <button @click="kirimPendaftaranMitraWA(p, t, h, a)" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-black py-3 rounded-xl shadow-md active:scale-95 transition-transform">Kirim Pendaftaran Mitra via WA</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE MERCHANTS -->
+        <section x-show="currentPage === 'merchants'" x-cloak class="fullscreen-page">
+          <div class="container-box space-y-3.5">
+            <div class="flex justify-between items-center mb-1">
+              <button @click="goHome()" class="text-xs font-bold text-blue-600"><i class="fa-solid fa-arrow-left"></i> Beranda</button>
+              <span class="text-xs font-black text-gray-700 bg-white px-3.5 py-1.5 rounded-full border shadow-xs" x-text="'Kategori: ' + selectedCategory"></span>
+            </div>
+            <h3 class="text-xs font-extrabold text-gray-800 uppercase tracking-wide">🏪 Pilih Toko / Warung</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <template x-for="merchant in getMerchantsByCategory()" :key="merchant.id">
+                <div @click="merchant.is_open ? openMerchantProducts(merchant) : showAlert('⚠️ Maaf, Toko Sedang Tutup')" 
+                     class="relative h-36 rounded-2xl overflow-hidden shadow-sm cursor-pointer border border-gray-100"
+                     :class="!merchant.is_open ? 'opacity-60 grayscale' : ''">
+                  <img :src="merchant.image" class="w-full h-full object-cover">
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+                  <span x-show="merchant.isMitra" class="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded z-10 shadow-xs">Mitra</span>
+                  <span class="absolute top-2 right-2 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded z-10" x-text="(merchant.jam_buka || '08:00') + '-' + (merchant.jam_tutup || '21:00')"></span>
+                  <div x-show="!merchant.is_open" class="absolute inset-0 bg-black/70 z-20 flex items-center justify-center p-2 text-center">
+                    <span class="bg-red-600 text-white text-xs font-black px-3 py-1 rounded uppercase tracking-wider shadow-lg animate-pulse">TUTUP</span>
+                  </div>
+                  <div class="absolute bottom-0 inset-x-0 p-2.5 text-white z-10">
+                    <h4 class="text-xs font-extrabold line-clamp-1" x-text="merchant.name"></h4>
+                    <p class="text-[10px] text-slate-200 line-clamp-1 mt-0.5" x-text="merchant.address"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE PRODUCTS -->
+        <section x-show="currentPage === 'products'" x-cloak class="fullscreen-page">
+          <div class="container-box space-y-3.5">
+            <div class="flex justify-between items-center mb-1">
+              <button @click="currentPage = 'merchants'; window.history.pushState({ page: 'merchants' }, '');" class="text-xs font-bold text-blue-600"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+              <span class="text-xs font-black text-slate-700 bg-white px-3 py-1.5 rounded-full border truncate max-w-[180px]" x-text="selectedMerchant ? selectedMerchant.name : 'Daftar Produk'"></span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <template x-for="product in getCurrentMerchantProducts()" :key="product.id">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3 flex flex-col justify-between"
+                     x-data="{ get merchantObj() { return getMerchantByTokoId(product.tokoId) } }"
+                     :class="(merchantObj && !merchantObj.is_open) || !product.isAvailable ? 'opacity-60 grayscale' : ''">
+                  
+                  <div @click="bukaDetailProduk(product)" class="cursor-pointer">
+                    <div class="w-full h-36 rounded-xl overflow-hidden bg-slate-50 relative mb-2.5 border border-slate-100">
+                      <img :src="product.img" class="w-full h-full object-cover">
+                      
+                      <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                        <i class="fa-solid fa-star text-amber-400"></i>
+                        <span x-text="product.rating || '4.8'"></span>
+                      </div>
+
+                      <div x-show="!merchantObj || merchantObj.isMitra" class="absolute bottom-2 left-2 bg-emerald-700 text-white text-xs font-black px-2.5 py-1 rounded-md shadow-xs">
+                        <span x-text="product.priceFormatted"></span>
+                      </div>
+                      <div x-show="merchantObj && !merchantObj.isMitra" class="absolute bottom-2 left-2 bg-orange-600 text-white text-[10px] font-black px-2.5 py-1 rounded-md shadow-xs">
+                        <span>Estimasi / Jastip</span>
+                      </div>
+
+                      <div x-show="merchantObj && !merchantObj.is_open" class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="text-white text-xs font-black bg-red-600 px-3 py-1 rounded shadow-lg animate-pulse">TUTUP</span>
+                      </div>
+                      <div x-show="merchantObj && merchantObj.is_open && !product.isAvailable" class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="text-white text-xs font-black bg-slate-800 px-3 py-1 rounded shadow-lg">STOK HABIS</span>
+                      </div>
+                    </div>
+
+                    <h4 class="text-sm font-black text-slate-800 line-clamp-1 leading-snug" x-text="product.name"></h4>
+                    <p class="text-xs text-slate-400 font-normal mt-1 line-clamp-2 leading-tight" x-text="product.description || 'Sangat lezat dan higienis.'"></p>
+                    
+                    <template x-if="product.variations && product.variations.length > 0">
+                      <div class="pt-1.5">
+                        <span class="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded" x-text="product.variations.length + ' Varian'"></span>
+                      </div>
+                    </template>
+
+                    <p class="text-[10px] font-bold text-slate-500 mt-1.5" x-text="'Terjual ' + (product.sold_count || 0) + '+'"></p>
+                  </div>
+                  
+                  <div class="mt-3 pt-2.5 border-t border-slate-100 w-full">
+                    <template x-if="!merchantObj || merchantObj.isMitra">
+                      <div class="flex items-center gap-2 w-full">
+                        <button @click="merchantObj && merchantObj.is_open && product.isAvailable ? addToCart(product) : showAlert('⚠️ Produk sedang tidak tersedia')" :disabled="(merchantObj && !merchantObj.is_open) || !product.isAvailable" class="relative w-9 h-9 bg-blue-50 text-blue-600 rounded-xl text-xs font-extrabold flex items-center justify-center disabled:opacity-50">
+                          <i class="fa-solid fa-cart-plus text-sm"></i>
+                          <template x-for="badge in flyingBadges.filter(b => b.productId === product.id)" :key="badge.id"><span class="fly-number">+1</span></template>
+                        </button>
+                        <button @click="bukaDetailProduk(product)" class="flex-1 h-9 bg-emerald-600 text-white rounded-xl text-xs font-black flex items-center justify-center shadow-xs">
+                          <span>Pesan</span>
+                        </button>
+                      </div>
+                    </template>
+
+                    <template x-if="merchantObj && !merchantObj.isMitra">
+                      <button @click="bukaFormPesananDariItem(product)" class="w-full h-9 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl text-xs font-black flex items-center justify-center shadow-xs hover:from-orange-600 hover:to-amber-600 transition-colors">
+                        <i class="fa-solid fa-bag-shopping mr-1.5 text-xs"></i> Titip Belikan
+                      </button>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE ORDERS -->
+        <section x-show="currentPage === 'orders'" x-cloak class="fullscreen-page">
+          <div class="container-box space-y-3.5">
+            <div class="flex justify-between items-center mb-1">
+              <button @click="goHome()" class="text-xs font-bold text-blue-600"><i class="fa-solid fa-arrow-left"></i> Beranda</button>
+              <span class="text-xs font-black text-gray-700 bg-white px-3 py-1.5 rounded-full border">📦 Riwayat Pesanan</span>
+            </div>
+            <div class="space-y-3">
+              <template x-for="ord in myOrders" :key="ord.id">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs relative space-y-2.5">
+                  <div class="flex justify-between items-start pb-2.5 border-b border-slate-100">
+                    <div class="pr-2">
+                      <span class="text-[11px] font-bold text-slate-400 block" x-text="ord.id"></span>
+                      <h4 class="text-sm font-black text-slate-800 mt-0.5" x-text="ord.nama_produk"></h4>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span :class="{ 
+                        'bg-amber-100 text-amber-700': ord.status === 'pending' || ord.status === 'waiting_merchant', 
+                        'bg-orange-100 text-orange-700 font-black animate-pulse': ord.status === 'diproses_mitra',
+                        'bg-blue-100 text-blue-700': ['waiting_driver', 'diproses', 'menuju_lokasi', 'diantar', 'mengantar'].includes(ord.status), 
+                        'bg-orange-500 text-white font-black animate-pulse': ord.status === 'diambil_driver' || ord.status === 'driver_tiba' || ord.status === 'sampai_lokasi',
+                        'bg-emerald-100 text-emerald-700': ord.status === 'selesai', 
+                        'bg-red-100 text-red-700': ['dibatalkan', 'ditolak'].includes(ord.status) 
+                      }" class="text-xs font-black px-2.5 py-1 rounded-full capitalize" 
+                      x-text="
+                        ord.status === 'waiting_merchant' ? '⏳ Menunggu Konfirmasi Toko' : 
+                        ord.status === 'diproses_mitra' ? '🍳 Sedang Dimasak Toko' : 
+                        ord.status === 'waiting_driver' ? (ord.layanan === 'motor' ? '🛵 Mencari Driver Ojek' : ord.layanan === 'jastip' ? '🛍️ Mencari Driver Jastip' : '🛵 Mencari Driver') : 
+                        ord.status === 'diambil_driver' ? (ord.layanan === 'motor' ? '🛵 Driver Sedang Menuju Lokasi Anda' : ord.layanan === 'jastip' ? '🛒 Driver Sedang Membeli Belanjaan' : '🛵 Driver Menuju ke Toko Mitra') : 
+                        ord.status === 'driver_tiba' || ord.status === 'sampai_lokasi' ? (ord.layanan === 'motor' ? '📍 Driver Sudah Tiba di Titik Jemput!' : '📍 Driver Sudah Tiba di Lokasi Toko!') : 
+                        ord.status === 'mengantar' ? (ord.layanan === 'motor' ? '🛵 Perjalanan Menuju Tujuan Anda' : '🛵 Driver Mengantar Pesanan ke Lokasi Anda') : 
+                        ord.status
+                      "></span>
+                      
+                      <template x-if="['selesai', 'dibatalkan', 'ditolak'].includes(ord.status)">
+                        <button @click="hapusRiwayatSendiri(ord.id)" class="w-7 h-7 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 transition-colors" title="Hapus dari Riwayat">
+                          <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+                  <div class="space-y-1.5 text-xs text-slate-600">
+                    <div class="flex justify-between"><span>Tujuan:</span><span class="font-bold text-slate-800 truncate max-w-[210px]" x-text="ord.titik_tujuan"></span></div>
+                    <div class="flex justify-between"><span>Metode Bayar:</span><span class="font-bold text-slate-800" x-text="ord.metode_pembayaran || 'COD'"></span></div>
+                    
+                    <template x-if="ord.driver_id && ord.status !== 'selesai' && ord.status !== 'dibatalkan' && ord.status !== 'ditolak'">
+                      <div class="mt-2.5 bg-blue-50 border border-blue-100 rounded-2xl p-3 space-y-2">
+                         <div class="flex items-center justify-between">
+                           <div class="flex items-center gap-2.5">
+                             <div class="w-9 h-9 rounded-full bg-blue-200 text-blue-600 flex items-center justify-center text-sm"><i class="fa-solid fa-motorcycle"></i></div>
+                             <div>
+                               <p class="text-[10px] font-bold text-slate-500">Driver Anda</p>
+                               <p class="text-xs font-black text-slate-800" x-text="ord.driver_nama || 'Driver SiapJek'"></p>
+                               <p class="text-[10px] text-slate-600 font-bold" x-text="ord.driver_plat || '-'"></p>
+                             </div>
+                           </div>
+                           <button @click="bukaChatDriver(ord)" class="relative bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md active:scale-95 transition-transform">
+                             <i class="fa-solid fa-comments"></i> Chat Driver
+                             <template x-if="unreadOrderChats[ord.id] > 0">
+                               <span class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white animate-badge" x-text="unreadOrderChats[ord.id]"></span>
+                             </template>
+                           </button>
+                         </div>
+                         <button @click="openDriverTracking(ord)" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs"><i class="fa-solid fa-map-location-dot"></i> Lacak Driver di Peta</button>
+                      </div>
+                    </template>
+
+                    <template x-if="ord.status === 'dibatalkan' || ord.status === 'ditolak'">
+                      <div class="bg-red-50 border border-red-200 p-2.5 rounded-xl text-xs text-red-700 my-2">
+                        <span class="font-bold block">❌ Alasan Pembatalan:</span>
+                        <p class="font-black mt-0.5" x-text="ord.alasan_batal || 'Dibatalkan tanpa keterangan.'"></p>
+                      </div>
+                    </template>
+
+                    <div class="flex justify-between text-emerald-700 text-sm font-extrabold pt-2 border-t border-slate-100 mt-2"><span>Total:</span><span x-text="'Rp ' + (ord.harga_total || 0).toLocaleString('id-ID')"></span></div>
+                  </div>
+
+                  <template x-if="ord.status === 'pending' || ord.status === 'waiting_merchant' || ord.status === 'waiting_driver'">
+                    <button @click="batalkanPesanan(ord)" :disabled="isCancelling" class="mt-2 w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-black py-2.5 rounded-xl transition-colors disabled:opacity-50">
+                      <span x-text="isCancelling ? '⏳ Membatalkan...' : 'Batalkan Pesanan'"></span>
+                    </button>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE ACCOUNT -->
+        <section x-show="currentPage === 'account'" x-cloak class="fullscreen-page">
+          <div class="container-box space-y-3.5">
+            <div class="flex justify-between items-center mb-1">
+              <button @click="goHome()" class="text-xs font-bold text-blue-600"><i class="fa-solid fa-arrow-left"></i> Beranda</button>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-xs border flex items-center gap-4">
+              <div class="relative cursor-pointer group" onclick="document.getElementById('input-file-foto-profil').click()">
+                <img :src="userPhoto" class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-sm">
+                <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-camera"></i></div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-black text-slate-800 truncate" x-text="userName"></h3>
+                <p class="text-xs text-slate-500 mt-0.5" x-text="userPhone"></p>
+                <button onclick="document.getElementById('input-file-foto-profil').click()" class="mt-2 bg-emerald-50 text-emerald-700 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-emerald-200"><i class="fa-solid fa-camera mr-1"></i> Ganti Foto</button>
+                <input type="file" id="input-file-foto-profil" accept="image/*" class="hidden" @change="prosesGantiFotoProfil($event)">
+              </div>
+            </div>
+            <button @click="showMutasiModal = true" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-black py-3.5 rounded-xl flex items-center justify-center gap-2"><i class="fa-solid fa-wallet text-sm"></i> Riwayat Mutasi Saldo SiapPay</button>
+            <button @click="showChatModal = true" class="w-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-black py-3.5 rounded-xl flex items-center justify-center gap-2"><i class="fa-solid fa-headset text-sm"></i> Live Chat & Bantuan Admin</button>
+            <button @click="showLaporModal = true" class="w-full bg-red-50 text-red-600 border border-red-100 text-xs font-black py-3.5 rounded-xl flex items-center justify-center gap-2"><i class="fa-solid fa-triangle-exclamation text-sm"></i> Laporkan Driver Bermasalah</button>
+            <button @click="logoutApp()" class="w-full bg-slate-100 text-slate-700 border text-xs font-black py-3.5 rounded-xl flex items-center justify-center gap-2"><i class="fa-solid fa-right-from-bracket text-sm"></i> Keluar Akun</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- BOTTOM BAR -->
+      <div class="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 flex justify-around py-2.5 px-3 z-30 shadow-lg">
+        <button @click="goHome()" :class="currentPage === 'home' ? 'text-emerald-600' : 'text-gray-400'" class="flex flex-col items-center"><i class="fa-solid fa-house text-base"></i><span class="text-[11px] font-bold mt-1">Beranda</span></button>
+        
+        <button @click="currentPage = 'orders'; window.history.pushState({ page: 'orders' }, '');" :class="currentPage === 'orders' ? 'text-emerald-600' : 'text-gray-400'" class="flex flex-col items-center relative">
+          <div class="relative">
+            <i class="fa-solid fa-receipt text-base"></i>
+            <template x-if="getActiveOrdersCount() > 0">
+              <span x-text="getActiveOrdersCount()" class="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border animate-badge"></span>
+            </template>
+          </div>
+          <span class="text-[11px] font-bold mt-1">Pesanan</span>
+        </button>
+
+        <button @click="showCartModal = true" class="flex flex-col items-center text-gray-400 relative">
+          <div class="relative">
+            <i class="fa-solid fa-basket-shopping text-base"></i>
+            <template x-if="getTotalItems() > 0">
+              <span x-text="getTotalItems()" class="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border animate-badge"></span>
+            </template>
+          </div>
+          <span class="text-[11px] font-bold mt-1">Keranjang</span>
+        </button>
+
+        <button @click="currentPage = 'account'; window.history.pushState({ page: 'account' }, '');" :class="currentPage === 'account' ? 'text-emerald-600' : 'text-gray-400'" class="flex flex-col items-center"><i class="fa-solid fa-user text-base"></i><span class="text-[11px] font-bold mt-1">Akun</span></button>
+      </div>
+    </div>
+
+    <!-- MODAL DETAIL PRODUK -->
+    <div x-show="showProductDetailModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/60 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[78vh] mb-16 sm:mb-0 flex flex-col overflow-hidden border">
+        <div class="p-4 overflow-y-auto space-y-3 flex-1 no-scrollbar pb-6">
+          <template x-if="selectedProductDetail">
+            <div class="space-y-3">
+              <div class="relative w-full h-40 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+                <img :src="selectedProductDetail.img" class="w-full h-full object-cover">
+                <button @click="showProductDetailModal = false" class="absolute top-2.5 right-2.5 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center font-bold text-sm">✕</button>
+              </div>
+              
+              <div>
+                <div class="flex justify-between items-start">
+                  <h3 class="text-sm font-black text-slate-800" x-text="selectedProductDetail.name"></h3>
+                  <span class="text-xs font-black text-emerald-600" x-text="selectedProductDetail.priceFormatted"></span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1 leading-relaxed" x-text="selectedProductDetail.description || 'Tidak ada deskripsi rinci untuk produk ini.'"></p>
+              </div>
+
+              <template x-if="selectedProductDetail.variations && selectedProductDetail.variations.length > 0">
+                <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                  <label class="text-[11px] font-black text-slate-700 block">✨ Pilihan Varian Produk:</label>
+                  <div class="space-y-1.5 max-h-32 overflow-y-auto pr-1 no-scrollbar">
+                    <template x-for="(v, vIdx) in selectedProductDetail.variations" :key="vIdx">
+                      <label class="flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-colors"
+                             :class="selectedVariantObj === v ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200'">
+                        <div class="flex items-center gap-2">
+                          <input type="radio" name="prod_variant" :checked="selectedVariantObj === v" @change="selectedVariantObj = v" class="text-emerald-600 w-3.5 h-3.5">
+                          <span class="text-[11px] font-bold text-slate-800" x-text="v.nama || v.name || 'Varian'"></span>
+                        </div>
+                        <span class="text-[11px] font-black text-orange-600" x-text="Number(v.harga || v.price || 0) > 0 ? '+Rp ' + Number(v.harga || v.price || 0).toLocaleString('id-ID') : 'Gratis'"></span>
+                      </label>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                <label class="text-[11px] font-black text-slate-700 block">🌶️ Catatan Pesanan / Pilihan Tambahan:</label>
+                <input type="text" x-model="selectedVariantNote" placeholder="Contoh: Pedas Sedang, Manis, Less Ice..." class="w-full p-2.5 text-xs bg-slate-50 border rounded-xl font-bold outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div class="flex items-center justify-between pt-2.5 border-t border-slate-100">
+                <div>
+                  <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Total Harga:</span>
+                  <span class="text-xs font-black text-emerald-600" x-text="'Rp ' + ((Number(selectedProductDetail.price || 0) + Number(selectedVariantObj?.harga || selectedVariantObj?.price || 0)) * detailQty).toLocaleString('id-ID')"></span>
+                </div>
+                
+                <div class="flex items-center gap-3 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
+                  <button @click="detailQty > 1 ? detailQty-- : null" class="text-sm font-extrabold text-slate-700 hover:text-red-500 transition-colors px-1">-</button>
+                  <span class="text-xs font-black text-slate-800 w-4 text-center" x-text="detailQty"></span>
+                  <button @click="detailQty++" class="text-sm font-extrabold text-slate-700 hover:text-emerald-600 transition-colors px-1">+</button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="p-3 bg-white border-t border-slate-100 shrink-0 flex gap-2 shadow-[0_-4px_15px_rgba(0,0,0,0.08)]">
+          <button @click="tambahDetailKeKeranjang()" class="flex-1 bg-blue-50 text-blue-600 font-black text-xs py-3 rounded-xl border border-blue-200 shadow-xs">+ Keranjang</button>
+          <button @click="pesanDetailLangsung()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-xl shadow-md">Pesan Sekarang</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL TRACKING & CHAT -->
+    <div x-show="showTrackModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-md rounded-2xl p-4 shadow-2xl space-y-3">
+        <div class="flex justify-between items-center border-b pb-2.5">
+          <h3 class="font-black text-xs text-slate-800"><i class="fa-solid fa-location-crosshairs text-blue-600 mr-1.5 text-sm"></i> Live Tracking Driver</h3>
+          <button @click="tutupTrackingModal()" class="text-slate-400 font-bold text-lg">✕</button>
+        </div>
+        <div class="bg-slate-50 p-3 rounded-xl text-xs space-y-1.5 border">
+          <p><strong>Driver:</strong> <span x-text="activeTrackOrder ? activeTrackOrder.driver_nama : ''"></span></p>
+          <p><strong>Tujuan:</strong> <span x-text="activeTrackOrder ? activeTrackOrder.titik_tujuan : ''"></span></p>
+        </div>
+        <div id="driver-track-map" class="border border-slate-200 shadow-inner"></div>
+        <button @click="tutupTrackingModal()" class="w-full bg-slate-200 text-slate-700 text-xs font-bold py-3 rounded-xl">Tutup Peta</button>
+      </div>
+    </div>
+
+    <div x-show="showChatModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-2xl p-4 shadow-2xl space-y-3 flex flex-col max-h-[85vh]">
+        <div class="flex justify-between items-center border-b pb-2.5 shrink-0">
+          <h3 class="font-black text-xs text-slate-800"><i class="fa-solid fa-headset text-emerald-600 mr-1.5 text-sm"></i> Live Chat & Bantuan Admin</h3>
+          <div class="flex items-center gap-2">
+            <button @click="hapusChatHistory()" class="text-red-500 hover:text-red-700 text-xs font-bold p-1 transition-colors" title="Hapus Riwayat Chat">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+            <button @click="showChatModal = false" class="text-slate-400 font-bold text-lg">✕</button>
+          </div>
+        </div>
+        <div id="chat-scroll-container" class="flex-1 overflow-y-auto space-y-2.5 p-3 bg-slate-50 rounded-xl border min-h-[220px] max-h-[280px] no-scrollbar">
+          <template x-if="chatHistory.length === 0"><p class="text-xs text-center text-slate-400 italic mt-16">Kirim pesan jika Anda memiliki kendala pesanan.</p></template>
+          <template x-for="msg in chatHistory" :key="msg.id">
+            <div :class="msg.pengirim === 'customer' ? 'text-right' : 'text-left'" class="space-y-1">
+              <span class="text-[10px] text-slate-400 font-bold uppercase" x-text="msg.pengirim === 'customer' ? 'Saya' : 'Admin Pusat'"></span>
+              <div :class="msg.pengirim === 'customer' ? 'bg-emerald-600 text-white ml-auto' : 'bg-white text-slate-800 border mr-auto'" class="p-3 rounded-xl text-xs max-w-[85%] inline-block text-left break-words shadow-xs">
+                <p x-text="msg.pesan"></p>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="flex gap-2 shrink-0 pt-1">
+          <input type="text" x-model="chatInputText" placeholder="Ketik pesan..." @keyup.enter="sendCustomerChat()" class="flex-1 p-3 bg-slate-50 border rounded-xl text-xs outline-none font-medium focus:ring-2 focus:ring-emerald-500">
+          <button @click="sendCustomerChat()" class="bg-emerald-600 text-white px-4 rounded-xl text-xs font-bold"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CHAT DRIVER -->
+    <div x-show="showDriverChatModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-2xl p-4 shadow-2xl space-y-3 flex flex-col max-h-[85vh]">
+        <div class="flex justify-between items-center border-b pb-2.5 shrink-0">
+          <div>
+            <h3 class="font-black text-xs text-slate-800 flex items-center gap-1.5"><i class="fa-solid fa-comments text-emerald-600 text-sm"></i> Chat dengan Driver</h3>
+            <p class="text-[10px] text-slate-500 font-bold" x-text="activeDriverChatOrder ? (activeDriverChatOrder.driver_nama + ' (' + (activeDriverChatOrder.driver_plat || '-') + ')') : ''"></p>
+          </div>
+          <button @click="tutupDriverChatModal()" class="text-slate-400 font-bold text-lg">✕</button>
+        </div>
+        
+        <div id="driver-chat-scroll-container" class="flex-1 overflow-y-auto space-y-2.5 p-3 bg-slate-50 rounded-xl border min-h-[220px] max-h-[280px] no-scrollbar">
+          <template x-if="driverChatHistory.length === 0">
+            <p class="text-xs text-center text-slate-400 italic mt-16">Kirim pesan kepada driver terkait pesanan ini.</p>
+          </template>
+          <template x-for="msg in driverChatHistory" :key="msg.id">
+            <div :class="msg.pengirim === 'customer' ? 'text-right' : 'text-left'" class="space-y-1">
+              <span class="text-[10px] text-slate-400 font-bold uppercase" x-text="msg.pengirim === 'customer' ? 'Saya' : (activeDriverChatOrder ? activeDriverChatOrder.driver_nama : 'Driver')"></span>
+              <div :class="msg.pengirim === 'customer' ? 'bg-emerald-600 text-white ml-auto' : 'bg-white text-slate-800 border mr-auto'" class="p-3 rounded-xl text-xs max-w-[85%] inline-block text-left break-words shadow-xs">
+                <p x-text="msg.pesan"></p>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="flex gap-2 shrink-0 pt-1">
+          <input type="text" x-model="driverChatInputText" placeholder="Ketik pesan ke driver..." @keyup.enter="sendDriverChat()" class="flex-1 p-3 bg-slate-50 border rounded-xl text-xs outline-none font-medium focus:ring-2 focus:ring-emerald-500">
+          <button @click="sendDriverChat()" class="bg-emerald-600 text-white px-4 rounded-xl text-xs font-bold"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="showMutasiModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/50 z-30 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-2xl p-4 shadow-xl max-h-[80vh] flex flex-col justify-between space-y-3">
+        <div>
+          <div class="flex justify-between items-center pb-2.5 border-b">
+            <h3 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-clock-rotate-left text-emerald-600 mr-1.5 text-sm"></i> Riwayat Saldo SiapPay</h3>
+            <button @click="showMutasiModal = false" class="text-slate-400 font-bold text-lg">✕</button>
+          </div>
+          <div class="py-3 overflow-y-auto max-h-[48vh] space-y-2.5">
+            <template x-if="myMutasi.length === 0"><div class="text-center text-slate-400 text-xs italic py-6">Belum ada riwayat mutasi saldo.</div></template>
+            <template x-for="mut in myMutasi" :key="mut.timestamp">
+              <div class="bg-slate-50 border p-3 rounded-xl flex justify-between items-center text-xs">
+                <div><span class="font-bold text-slate-800 block text-xs" x-text="mut.keterangan"></span><span class="text-[10px] text-slate-400" x-text="new Date(mut.timestamp).toLocaleString()"></span></div>
+                <div class="text-right"><span :class="mut.jenis === 'IN' ? 'text-emerald-600' : 'text-red-500'" class="font-black block text-xs" x-text="(mut.jenis === 'IN' ? '+ ' : '- ') + Number(mut.nominal || 0).toLocaleString('id-ID')"></span></div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="pt-2.5 border-t"><button @click="showMutasiModal = false" class="w-full bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl">Tutup</button></div>
+      </div>
+    </div>
+
+    <!-- MODAL KERANJANG -->
+    <div x-show="showCartModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/60 z-50 flex items-end justify-center">
+      <div class="bg-white w-full max-w-md rounded-t-3xl p-4 pb-20 shadow-2xl max-h-[85vh] flex flex-col justify-between space-y-3">
+        <div>
+          <div class="flex justify-between items-center pb-2.5 border-b">
+            <h3 class="font-black text-xs text-gray-800 uppercase tracking-wide">Keranjang Pesanan</h3>
+            <button @click="showCartModal = false" class="text-slate-400 font-bold text-lg">✕</button>
+          </div>
+          <div class="py-3 overflow-y-auto max-h-[42vh] space-y-2.5 no-scrollbar">
+            <template x-for="(item, index) in cart" :key="index">
+              <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100 gap-2">
+                <div class="flex-1 min-w-0 pr-1">
+                  <h5 class="text-xs font-bold text-slate-800 truncate" x-text="item.name"></h5>
+                  <p x-show="item.variant" class="text-[10px] text-slate-400 italic mt-0.5 truncate" x-text="'Catatan: ' + item.variant"></p>
+                  <p class="text-xs text-emerald-600 font-extrabold mt-0.5" x-text="item.priceFormatted"></p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <div class="flex items-center gap-2 bg-white border px-2 py-1 rounded-xl">
+                    <button @click="decreaseCartItem(index)" class="text-xs font-bold px-1 text-slate-600">-</button>
+                    <span class="text-xs font-black text-slate-800 w-4 text-center" x-text="item.qty"></span>
+                    <button @click="increaseCartItem(index)" class="text-xs font-bold px-1 text-slate-600">+</button>
+                  </div>
+                  <button @click="removeCartItem(index)" class="w-7 h-7 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-100 transition-colors" title="Hapus Item">
+                    <i class="fa-solid fa-trash text-[10px]"></i>
+                  </button>
+                </div>
+              </div>
+            </template>
+            <template x-if="cart.length === 0">
+              <div class="text-center py-8 text-slate-400 text-xs italic">Keranjang belanja masih kosong.</div>
+            </template>
+          </div>
+        </div>
+
+        <div class="pt-2.5 border-t space-y-2 bg-white">
+          <div class="flex justify-between items-center px-1 text-xs">
+            <span class="font-bold text-slate-500">Total Barang (<span x-text="getTotalItems()"></span>):</span>
+            <span class="font-black text-slate-800 text-sm" x-text="'Rp ' + getTotalPrice().toLocaleString('id-ID')"></span>
+          </div>
+          <div class="flex gap-2">
+            <button @click="showCartModal = false" :disabled="cart.length === 0" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-3 rounded-xl disabled:opacity-50 transition-colors">Tambah Menu Lain</button>
+            <button @click="cekDanLanjutCheckout()" :disabled="cart.length === 0" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-3 rounded-xl disabled:opacity-50 shadow-sm active:scale-95 transition-transform">Pesan Sekarang 🚀</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL TOP UP & TARIK -->
+    <div x-show="showTopUpModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-2xl p-4 shadow-xl space-y-3.5">
+        <div class="flex justify-between items-center border-b pb-2.5"><h3 class="font-bold text-xs text-orange-600 uppercase tracking-wide">Top Up Saldo SiapPay</h3><button @click="showTopUpModal = false" class="text-slate-400 font-bold text-lg">✕</button></div>
+        
+        <div x-show="topUpStep === 1" class="space-y-3">
+          <label class="text-xs font-bold text-slate-700 block">Nominal Top Up (Min Rp 10.000):</label>
+          <input type="number" x-model="inputTopUpNominal" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="50000">
+          <button @click="lanjutkanTopUp()" class="w-full bg-emerald-600 text-white text-xs font-black py-3 rounded-xl">Lanjut</button>
+        </div>
+        
+        <div x-show="topUpStep === 2" class="space-y-3.5">
+          <div class="bg-blue-50 border border-blue-200 p-3.5 rounded-xl text-center shadow-xs">
+            <p class="text-xs font-bold text-blue-800">1️⃣ Silakan Transfer Tepat Sesuai Nominal Berikut:</p>
+            <h2 class="text-xl font-black text-blue-700 my-1.5" x-text="'Rp ' + totalTransferTopUp.toLocaleString('id-ID')"></h2>
+            <p class="text-[10px] text-blue-600 font-bold">*Nominal sudah ditambah kode unik</p>
+          </div>
+
+          <div class="space-y-2">
+             <p class="text-xs font-bold text-slate-700 block">2️⃣ Transfer ke Rekening Admin:</p>
+             <template x-for="rek in rekeningAdmin">
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-black text-emerald-700 block uppercase" x-text="rek.bank"></span>
+                    <span class="text-xs font-bold text-slate-800 mt-0.5 block" x-text="rek.nomor"></span>
+                    <span class="text-[10px] text-slate-500 block" x-text="'a.n ' + rek.atas_nama"></span>
+                  </div>
+                  <button @click="salinTeks(rek.nomor)" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-xl font-bold transition-colors">Salin</button>
+                </div>
+             </template>
+          </div>
+
+          <div class="pt-2.5 border-t border-slate-200">
+            <p class="text-[10px] text-red-600 font-bold text-center mb-2.5">3️⃣ JIKA SUDAH TRANSFER, klik tombol di bawah untuk kirim bukti ke WA</p>
+            <button @click="kirimPermintaanTopUpWA()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform">
+              <i class="fa-brands fa-whatsapp text-base"></i> SAYA SUDAH TRANSFER
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="showTarikModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-2xl p-4 shadow-xl space-y-3.5">
+        <div class="flex justify-between items-center border-b pb-2.5"><h3 class="font-bold text-xs text-blue-600 uppercase tracking-wide">Tarik Saldo SiapPay</h3><button @click="showTarikModal = false" class="text-slate-400 font-bold text-lg">✕</button></div>
+        <div class="space-y-1.5"><label class="text-xs font-bold text-slate-700 block">Jumlah Penarikan (Rp):</label><input type="number" x-model="inputTarikNominal" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="50000"></div>
+        <div class="space-y-1.5"><label class="text-xs font-bold text-slate-700 block">Rekening / DANA Tujuan:</label><input type="text" x-model="inputTarikTujuan" class="w-full text-xs p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="DANA 081234567890 a.n Anda"></div>
+        <button @click="kirimPermintaanTarikWA()" class="w-full bg-blue-600 text-white text-xs font-black py-3 rounded-xl flex items-center justify-center gap-2 shadow-md"><i class="fa-brands fa-whatsapp text-base"></i> Kirim Permintaan Tarik Saldo</button>
+      </div>
+    </div>
+
+    <!-- MODAL FORM CHECKOUT -->
+    <div x-show="showFormOrderModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-3">
+      <div class="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4 border">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 class="font-black text-xs text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+            <i class="fa-solid fa-clipboard-list text-emerald-600 text-base"></i> Formulir Pesanan
+          </h3>
+          <button @click="showFormOrderModal = false" class="text-slate-400 font-bold text-lg">✕</button>
+        </div>
+        
+        <div class="space-y-3.5">
+          <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+            <span class="truncate" x-text="orderFormLabel"></span>
+          </div>
+
+          <!-- FORM MOTOR -->
+          <div x-show="orderFormType === 'motor'" class="space-y-3">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-emerald-700 block">📍 Titik Jemput Penumpang (Asal):</label>
+              <button @click="ambilLokasiGPSJemput()" type="button" class="w-full mb-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors">
+                <i class="fa-solid fa-location-crosshairs"></i> 📍 Ambil Titik GPS Saya
+              </button>
+              <div class="relative flex items-center">
+                <input type="text" id="input-lokasi-jemput" x-model="inputAsalText" @keyup.enter.prevent="cariAlamatJemput()" class="w-full text-xs p-2.5 pr-16 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Ketik lokasi/toko/jalan...">
+                <button @click.prevent="cariAlamatJemput()" type="button" class="absolute right-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-lg text-xs">
+                  <span x-text="isLoadingSearch ? '...' : 'Cari'"></span>
+                </button>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-blue-700 block">🏠 Titik Tujuan Pengantaran:</label>
+              <div class="relative flex items-center">
+                <input type="text" id="input-lokasi-tujuan" x-model="inputTujuanText" @keyup.enter.prevent="cariAlamatTujuan()" class="w-full text-xs p-2.5 pr-16 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Ketik lokasi/toko/jalan...">
+                <button @click.prevent="cariAlamatTujuan()" type="button" class="absolute right-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-lg text-xs">
+                  <span x-text="isLoadingSearch ? '...' : 'Cari'"></span>
+                </button>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-700 block">📝 Catatan untuk Driver:</label>
+              <textarea x-model="inputCatatanText" rows="2" class="w-full text-xs p-2.5 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Contoh: Tunggu di depan gang..."></textarea>
+            </div>
+          </div>
+
+          <!-- FORM JASTIP -->
+          <div x-show="orderFormType === 'jastip'" class="space-y-3">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-orange-600 block">📍 Tempat Belanja (Asal):</label>
+              <div class="flex gap-2">
+                <div class="relative flex-1 flex items-center">
+                  <input type="text" id="input-lokasi-jemput-jastip" x-model="inputAsalText" @keyup.enter.prevent="cariAlamatJemput()" class="w-full text-xs p-2.5 pr-12 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Contoh: Pasar Samuda">
+                  <button @click.prevent="cariAlamatJemput()" type="button" class="absolute right-1 px-2 py-1.5 bg-orange-500 text-white font-black rounded-lg text-xs">
+                    <span x-text="isLoadingSearch ? '...' : 'Cari'"></span>
+                  </button>
+                </div>
+                <button @click="ambilLokasiGPSAsalJastip()" type="button" class="bg-orange-100 text-orange-700 border border-orange-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 shrink-0"><i class="fa-solid fa-location-crosshairs"></i> GPS</button>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-blue-700 block">🏠 Alamat Tujuan (Rumah Anda):</label>
+              <div class="flex gap-2">
+                <div class="relative flex-1 flex items-center">
+                  <input type="text" id="input-lokasi-tujuan-jastip" x-model="inputTujuanText" @keyup.enter.prevent="cariAlamatTujuan()" class="w-full text-xs p-2.5 pr-12 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Ketik nama desa / patokan...">
+                  <button @click.prevent="cariAlamatTujuan()" type="button" class="absolute right-1 px-2 py-1.5 bg-blue-600 text-white font-black rounded-lg text-xs">
+                    <span x-text="isLoadingSearch ? '...' : 'Cari'"></span>
+                  </button>
+                </div>
+                <button @click="ambilLokasiGPSPelanggan()" type="button" class="bg-blue-100 text-blue-700 border border-blue-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 shrink-0"><i class="fa-solid fa-location-crosshairs"></i> GPS</button>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-amber-700 block">📝 Rincian Belanjaan:</label>
+              <textarea x-model="inputCatatanText" rows="2" class="w-full text-xs p-2.5 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Tulis detail barang..."></textarea>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-700 block">💰 Perkiraan Modal Belanja (Rp) - Opsional:</label>
+              <input type="number" x-model="estimasiModalJastip" class="w-full text-xs p-2.5 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Contoh: 50000">
+            </div>
+          </div>
+
+          <!-- FORM TOKO MITRA -->
+          <div x-show="orderFormType === 'mitra'" class="space-y-3">
+            <div x-show="isAlamatTerkunci" class="space-y-1">
+              <label class="text-[11px] font-bold text-emerald-800 block">🏪 Titik Jemput Toko (Terkunci):</label>
+              <input type="text" x-model="inputAsalTokoText" class="w-full text-xs p-2.5 bg-slate-100 border rounded-xl text-slate-700 font-bold" readonly>
+            </div>
+            <div x-show="!isAlamatTerkunci" class="space-y-1">
+              <label class="text-[11px] font-bold text-orange-600 block">📍 Titik Jemput Anda:</label>
+              <div class="relative flex items-center">
+                <input type="text" id="input-lokasi-jemput-mitra" x-model="inputAsalText" @keyup.enter.prevent="cariAlamatJemput()" class="w-full text-xs p-2.5 pr-16 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Ketik lokasi...">
+                <button @click.prevent="cariAlamatJemput()" type="button" class="absolute right-1 px-2.5 py-1.5 bg-orange-500 text-white font-black rounded-lg text-xs">
+                  <span x-text="isLoadingSearch ? '...' : 'Cari'"></span>
+                </button>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-blue-700 block">🏠 Titik Tujuan / Alamat Antar:</label>
+              <button @click="ambilLokasiGPSPelanggan()" type="button" class="w-full mb-1 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors">
+                <i class="fa-solid fa-location-crosshairs"></i> Ambil Titik GPS Saya (Share Lock)
+              </button>
+              <div class="relative flex items-center">
+                <input type="text" id="input-lokasi-tujuan-mitra" x-model="inputTujuanText" @keyup.enter.prevent="cariAlamatTujuan()" class="w-full text-xs p-2.5 pr-16 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Ketik alamat tujuan...">
+                <button @click.prevent="cariAlamatTujuan()" type="button" class="absolute right-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-lg text-xs">
+                  <span x-text="isLoadingSearch ? '...' : 'Cari'"></span>
+                </button>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-700 block">📝 Catatan Driver:</label>
+              <textarea x-model="inputCatatanText" rows="2" class="w-full text-xs p-2.5 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Catatan..."></textarea>
+            </div>
+          </div>
+
+          <!-- CONTAINER PETA GOOGLE MAPS -->
+          <div class="space-y-1.5 pt-1 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-500">🗺️ Geser pin kursor di peta untuk akurasi lokasi:</span>
+            </div>
+            <div id="google-map-checkout" class="border shadow-inner rounded-xl overflow-hidden"></div>
+          </div>
+          
+          <div class="bg-emerald-50/70 border border-emerald-200 text-emerald-900 p-2.5 rounded-xl text-center text-xs font-bold">
+            <span x-text="ongkirStatusText"></span>
+          </div>
+          
+          <!-- PEMBAYARAN -->
+          <div class="space-y-1.5 pt-1 border-t border-slate-100">
+            <label class="text-[11px] font-bold text-slate-700 block">💳 Metode Pembayaran:</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer">
+                <input type="radio" x-model="metodePembayaran" value="COD" class="w-4 h-4 text-emerald-600"> Tunai (COD)
+              </label>
+              <label class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer"
+                     :class="userSaldo < hitungTotalSubtotalDanOngkir() ? 'opacity-50 border-red-200' : ''">
+                <input type="radio" x-model="metodePembayaran" value="Saldo" class="w-4 h-4 text-emerald-600"
+                       :disabled="userSaldo < hitungTotalSubtotalDanOngkir()"> 
+                <div class="leading-tight">
+                  <span>Saldo</span>
+                  <span class="block text-[9px] text-slate-400 font-normal" x-text="'Rp ' + (userSaldo || 0).toLocaleString('id-ID')"></span>
+                </div>
+              </label>
+            </div>
+            <template x-if="userSaldo < hitungTotalSubtotalDanOngkir() && metodePembayaran === 'Saldo'">
+              <p class="text-[10px] text-red-600 font-bold mt-1">⚠️ Saldo tidak mencukupi.</p>
+            </template>
+          </div>
+          
+          <div class="pt-2 flex gap-2 border-t border-slate-100">
+            <button @click="showFormOrderModal = false" type="button" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-3 rounded-xl transition-colors">
+              Batal
+            </button>
+            <button @click="kirimOrderKeFirebase()" :disabled="isSubmitting" type="button" class="flex-[2] bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black py-3 rounded-xl shadow-md active:scale-95 transition-transform disabled:opacity-50">
+              <span x-text="isSubmitting ? '⏳ Memproses...' : '🚀 Konfirmasi & Pesan'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL LAPOR DRIVER -->
+    <div x-show="showLaporModal" x-cloak style="display:none;" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-2xl p-4.5 shadow-xl space-y-3.5" x-data="{ ref: '', kendala: 'Driver tidak datang / membatalkan sepihak', pesan: '' }">
+        <div class="flex justify-between items-center border-b pb-2.5"><h3 class="font-bold text-xs text-red-600 uppercase tracking-wide"><i class="fa-solid fa-triangle-exclamation mr-1.5 text-sm"></i> Laporkan Driver</h3><button @click="showLaporModal = false" class="text-slate-400 font-bold text-lg">✕</button></div>
+        <div class="space-y-3 text-xs">
+          <input type="text" x-model="ref" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="ID Pesanan / Driver">
+          <select x-model="kendala" class="w-full p-3 bg-slate-50 border rounded-xl font-bold text-xs"><option value="Driver tidak datang">Driver tidak datang</option><option value="Minta biaya tambahan">Minta biaya tambahan</option><option value="Perilaku kasar">Perilaku kasar</option></select>
+          <textarea x-model="pesan" rows="2.5" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 focus:ring-emerald-500" placeholder="Kronologi..."></textarea>
+        </div>
+        <button @click="kirimLaporanKeWA(ref, kendala, pesan)" class="w-full bg-red-600 text-white text-xs font-black py-3 rounded-xl shadow-md">Kirim Laporan via WA</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SCRIPT UTAMA GOOGLE MAPS & ALPINE DATA -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_Ndbf9idBUkMb5aNU-Bc8qZIEVI90Ddk",
+      authDomain: "siapjek-8d69c.firebaseapp.com",
+      databaseURL: "https://siapjek-8d69c-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "siapjek-8d69c"
+    };
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.database();
+    
+    let currentCustomerId = "";
+    let dataCheckoutAktif = null; let qtyPesananAktif = 1;
+    let ongkirFinal = 5000; let jarakKmFinal = 0;
+    
+    let mapCheckoutGoogle = null; 
+    let markerCheckoutAsalGoogle = null; 
+    let markerCheckoutTujuanGoogle = null;
+    let directionsServiceGoogle = null;
+    let directionsRendererGoogle = null;
+
+    let trackingGoogle = null; 
+    let trackingDriverMarkerGoogle = null; 
+    let trackingRef = null;
+    let driverChatRef = null; 
+    let globalActiveOrdersChatRefs = [];
+
+    // SVG Pin Kursor Peta
+    const pinCursorIconAsal = {
+      path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+      fillColor: '#10b981',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 1.5,
+      scale: 1.8,
+      anchor: new google.maps.Point(12, 22)
+    };
+
+    const pinCursorIconTujuan = {
+      path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+      fillColor: '#ef4444',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 1.5,
+      scale: 1.8,
+      anchor: new google.maps.Point(12, 22)
+    };
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('appSiapJek', () => ({
+        isLoggedIn: false, loginId: '', showRegisterCard: false, regName: '', regPhone: '',
+        isMaintenance: false, maintenanceMessage: 'Aplikasi sedang dalam pemeliharaan rutin. Mohon kembali beberapa saat lagi.',
+        topBanner: { tag: 'ASLI SAMUDA', tagColor: 'bg-orange-500', title: 'Ojek Online-nya Orang Samuda! 🛵💨', desc: 'Cepat, Murah & Siap Antar Samuda dan Sekitarnya', img: 'https://cdn-icons-png.flaticon.com/512/3097/3097180.png' },
+        adminPromos: [], currentPage: 'home', selectedCategory: '', selectedMerchant: null, activeTab: 'terbaru',
+        showCartModal: false, showMutasiModal: false, showChatModal: false, showTrackModal: false,
+        showTopUpModal: false, showTarikModal: false, showFormOrderModal: false, showLaporModal: false,
+        showProductDetailModal: false, selectedProductDetail: null, selectedVariantObj: null, selectedVariantNote: '', detailQty: 1,
+        
+        showDriverChatModal: false,
+        activeDriverChatOrder: null,
+        driverChatHistory: [],
+        driverChatInputText: '',
+        unreadDriverChatCount: 0,
+        unreadOrderChats: {},
+
+        showFloatingPopup: false,
+        popupData: { title: '', message: '', icon: '', btnText: '', actionType: '', targetData: null },
+        lastNotifiedOrderStatus: {},
+
+        topUpStep: 1, inputTopUpNominal: '', nominalTopUpAsli: 0, kodeUnikTopUp: 0, totalTransferTopUp: 0,
+        inputTarikNominal: '', inputTarikTujuan: '',
+        isSubmitting: false, isCancelling: false, isLoadingSearch: false,
+        
+        showAppAlert: false,
+        appAlertMessage: '',
+        showAlert(msg) {
+          this.appAlertMessage = msg;
+          this.showAppAlert = true;
+        },
+        
+        latAsalToko: -2.9818, lngAsalToko: 112.9739,
+        latTujuanPelanggan: -2.9830, lngTujuanPelanggan: 112.9750,
+
+        systemSettings: { 
+          tarif_dasar_motor: 5000, 
+          tarif_per_km_motor: 2000, 
+          tarif_dasar_jastip: 7000, 
+          tarif_per_km_jastip: 2500, 
+          komisi_persen: 15, 
+          admin_wa: '081234567890',
+          buka_fitur_topup_pelanggan: true,
+          buka_fitur_tarik_pelanggan: true,
+          pesan_fitur_saldo: 'Fitur belum bisa digunakan'
+        },
+
+        orderFormType: 'mitra',
+        orderFormLabel: '', isAlamatTerkunci: false, inputAsalTokoText: '', inputAsalText: '', inputTujuanText: '', inputCatatanText: '', estimasiModalJastip: '', metodePembayaran: 'COD', ongkirStatusText: 'Menghitung rute...',
+        activeTrackOrder: null, chatHistory: [], chatInputText: '', searchKeyword: '', cart: [], myOrders: [], myMutasi: [], flyingBadges: [],
+        userName: 'Pelanggan', userPhone: '', userSaldo: 0, userPhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
+        runningText: 'Selamat datang di SiapJek', adminWA: '081234567890', merchants: [], productsMap: {}, allProductsList: [], rekeningAdmin: [], promoSwiperInstance: null,
+
+        getMerchantByTokoId(tokoId) {
+          if (!tokoId || !this.merchants || this.merchants.length === 0) return null;
+          return this.merchants.find(m => String(m.id) === String(tokoId)) || null;
+        },
+
+        playNotificationSound() {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+          } catch(e) {}
+          if ('vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200]);
+          }
+        },
+
+        triggerFloatingNotification(title, message, icon, btnText, actionType, targetData) {
+          this.popupData = { title, message, icon, btnText, actionType, targetData };
+          this.showFloatingPopup = true;
+          this.playNotificationSound();
+          setTimeout(() => {
+            this.showFloatingPopup = false;
+          }, 6000);
+        },
+
+        handlePopupAction() {
+          this.showFloatingPopup = false;
+          if (this.popupData.actionType === 'chat_driver') {
+            this.bukaChatDriver(this.popupData.targetData);
+          } else if (this.popupData.actionType === 'track_order') {
+            this.openDriverTracking(this.popupData.targetData);
+          } else if (this.popupData.actionType === 'view_orders') {
+            this.currentPage = 'orders';
+          }
+        },
+
+        sendWA(text) {
+          let cleanHp = this.adminWA.trim();
+          window.open(`https://wa.me/${cleanHp}?text=${encodeURIComponent(text)}`, '_blank');
+        },
+
+        initApp() {
+          this.requestGPSPermissionSilent();
+          this.initGooglePlacesAutocomplete();
+
+          db.ref('settings/maintenance_mode').on('value', snap => {
+            let data = snap.val();
+            if (typeof data === 'object' && data !== null) {
+              this.isMaintenance = data.active || false;
+              this.maintenanceMessage = data.message || "Aplikasi sedang dalam pemeliharaan rutin. Mohon kembali beberapa saat lagi.";
+            } else { this.isMaintenance = Boolean(data); }
+          });
+
+          let savedId = localStorage.getItem('siapjek_cust_id');
+          let savedPhone = localStorage.getItem('siapjek_cust_phone');
+          let savedName = localStorage.getItem('siapjek_cust_name');
+          let savedPhoto = localStorage.getItem('siapjek_cust_photo');
+          if (savedId) {
+            currentCustomerId = savedId; this.userPhone = savedPhone || ''; this.userName = savedName || 'Pelanggan';
+            if (savedPhoto) this.userPhoto = savedPhoto;
+            this.isLoggedIn = true; this.initDataListeners(); this.cleanUpOldData();
+          }
+          db.ref('settings/app_config/admin_wa').on('value', snap => {
+            if (snap.exists()) { this.adminWA = snap.val(); }
+          });
+        },
+
+        initGooglePlacesAutocomplete() {
+          this.$nextTick(() => {
+            setTimeout(() => {
+              ['input-lokasi-jemput', 'input-lokasi-tujuan', 'input-lokasi-jemput-jastip', 'input-lokasi-tujuan-jastip', 'input-lokasi-jemput-mitra', 'input-lokasi-tujuan-mitra'].forEach(id => {
+                let el = document.getElementById(id);
+                if (el && typeof google !== 'undefined' && google.maps && google.maps.places) {
+                  let autocomplete = new google.maps.places.Autocomplete(el, { componentRestrictions: { country: 'id' } });
+                  autocomplete.addListener('place_changed', () => {
+                    let place = autocomplete.getPlace();
+                    if (place.geometry && place.geometry.location) {
+                      let lat = place.geometry.location.lat();
+                      let lng = place.geometry.location.lng();
+                      let addressName = place.formatted_address || place.name;
+                      
+                      if (id.includes('jemput')) {
+                        this.latAsalToko = lat;
+                        this.lngAsalToko = lng;
+                        this.inputAsalText = addressName;
+                        if (markerCheckoutAsalGoogle) {
+                          markerCheckoutAsalGoogle.setPosition({ lat, lng });
+                        }
+                      } else {
+                        this.latTujuanPelanggan = lat;
+                        this.lngTujuanPelanggan = lng;
+                        this.inputTujuanText = addressName;
+                        if (markerCheckoutTujuanGoogle) {
+                          markerCheckoutTujuanGoogle.setPosition({ lat, lng });
+                        }
+                      }
+                      if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter({ lat, lng });
+                      this.updateRoutingAndOngkirGoogle();
+                    }
+                  });
+                }
+              });
+            }, 1000);
+          });
+        },
+
+        requestGPSPermissionSilent() {
+          if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                this.latAsalToko = pos.coords.latitude;
+                this.lngAsalToko = pos.coords.longitude;
+              },
+              (err) => { console.warn("GPS tidak aktif/ditolak."); },
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+          }
+        },
+
+        cleanUpOldData() {
+          if (!currentCustomerId) return;
+          let tigaHari = 3 * 24 * 60 * 60 * 1000;
+          let tujuhHari = 7 * 24 * 60 * 60 * 1000;
+          let sekarang = Date.now();
+
+          db.ref('customer_chats/' + currentCustomerId).once('value', snap => {
+            if (snap.exists()) {
+              snap.forEach(c => { if (c.val()?.waktu && (sekarang - Number(c.val().waktu) > tujuhHari)) { db.ref('customer_chats/' + currentCustomerId + '/' + c.key).remove(); } });
+            }
+          });
+
+          db.ref('orders').orderByChild('customer_id').equalTo(currentCustomerId).once('value', snap => {
+            if (snap.exists()) {
+              snap.forEach(c => {
+                let ord = c.val(), status = ord.status || '', waktuOrder = ord.timestamp || ord.waktu || 0;
+                if (['selesai', 'dibatalkan', 'ditolak'].includes(status) && waktuOrder > 0 && (sekarang - waktuOrder > tigaHari)) { 
+                  db.ref('orders/' + c.key).remove();
+                  db.ref('order_chats/' + c.key).remove();
+                }
+              });
+            }
+          });
+
+          db.ref('mutasi_saldo').orderByChild('user_id').equalTo(currentCustomerId).once('value', snap => {
+            if (snap.exists()) {
+              snap.forEach(c => {
+                let item = c.val();
+                let waktuMutasi = item.timestamp || 0;
+                if (waktuMutasi > 0 && (sekarang - waktuMutasi > tigaHari)) {
+                  db.ref('mutasi_saldo/' + c.key).remove();
+                }
+              });
+            }
+          });
+        },
+
+        hapusRiwayatSendiri(orderId) {
+          if (confirm('Hapus pesanan ini dari riwayat Anda?')) { 
+            Promise.all([
+              db.ref('orders/' + orderId).remove(),
+              db.ref('order_chats/' + orderId).remove()
+            ]).then(() => { 
+              this.showAlert('✅ Riwayat pesanan dan chat berhasil dihapus.'); 
+            }); 
+          }
+        },
+
+        loginWithId() {
+          let inputId = this.loginId.trim();
+          if (!inputId) return this.showAlert('⚠️ Masukkan ID Pelanggan Anda terlebih dahulu!');
+          db.ref('customers/' + inputId).once('value', snap => {
+            if (snap.exists()) {
+              let custData = snap.val();
+              if (custData.status === 'suspend' || custData.status === 'blokir') return this.showAlert('❌ Akun Anda dinonaktifkan.');
+              currentCustomerId = inputId; this.userPhone = custData.no_hp || ''; this.userName = custData.nama || 'Pelanggan'; this.userSaldo = Number(custData.saldo || 0);
+              if (custData.foto) { this.userPhoto = custData.foto; localStorage.setItem('siapjek_cust_photo', custData.foto); }
+              localStorage.setItem('siapjek_cust_id', currentCustomerId); localStorage.setItem('siapjek_cust_phone', this.userPhone); localStorage.setItem('siapjek_cust_name', this.userName);
+              this.isLoggedIn = true; this.initDataListeners(); this.cleanUpOldData();
+            } else { this.showAlert('❌ ID Pelanggan tidak ditemukan!'); }
+          });
+        },
+
+        requestAdminId() {
+          let name = this.regName.trim(), phone = this.regPhone.trim();
+          if (!name || !phone) return this.showAlert('⚠️ Mohon lengkapi Nama dan Nomor WA Anda!');
+          
+          let phoneDigits = phone.replace(/\D/g, '');
+          if (phoneDigits.length < 10) {
+            return this.showAlert('⚠️ Nomor WhatsApp yang Anda masukkan terlalu pendek atau tidak valid!');
+          }
+
+          let cleanPhone = phoneDigits;
+          if (cleanPhone.startsWith('0')) {
+            cleanPhone = cleanPhone.slice(1);
+          } else if (cleanPhone.startsWith('62')) {
+            cleanPhone = cleanPhone.slice(2);
+          }
+
+          let reqId = 'PENDING_' + Date.now();
+          db.ref('pending_customers/' + reqId).set({ id: reqId, nama: name, no_hp: '62' + cleanPhone, status: 'pending', timestamp: Date.now() }).then(() => {
+            db.ref('settings/app_config/admin_wa').once('value', snap => {
+              let adminWaNumber = snap.val() || this.adminWA, cleanAdminWa = String(adminWaNumber).trim();
+              let pesan = `Halo Admin SiapJek, saya ingin mendaftar sebagai pelanggan baru.\n\n👤 Nama: *${name}*\n📱 No. WA: *${cleanPhone}*\n\nMohon konfirmasi pendaftaran saya. Terima kasih!`;
+              window.open(`https://wa.me/${cleanAdminWa}?text=${encodeURIComponent(pesan)}`, '_blank');
+              this.showRegisterCard = false; this.regName = ''; this.regPhone = '';
+              this.showAlert('✅ Permohonan berhasil terkirim!');
+            });
+          }).catch(err => { this.showAlert('❌ Gagal mengirim data: ' + err.message); });
+        },
+
+        logoutApp() { if (confirm('Keluar dari akun ini?')) { localStorage.clear(); this.isLoggedIn = false; window.location.reload(); } },
+
+        initDataListeners() {
+          window.history.pushState({ page: 'home' }, '');
+          window.addEventListener('popstate', () => {
+            if (this.showTopUpModal || this.showTarikModal || this.showLaporModal || this.showFormOrderModal || this.showProductDetailModal) {
+               this.showTopUpModal = this.showTarikModal = this.showLaporModal = this.showFormOrderModal = this.showProductDetailModal = false; return;
+            }
+            if (this.showCartModal || this.showMutasiModal || this.showChatModal || this.showTrackModal || this.showDriverChatModal) {
+               if (this.showTrackModal) this.tutupTrackingModal();
+               else if (this.showDriverChatModal) this.tutupDriverChatModal();
+               else this.showCartModal = this.showMutasiModal = this.showChatModal = false; 
+               return;
+            }
+            if (this.searchKeyword.trim() !== '') {
+              this.searchKeyword = ''; return;
+            }
+            if (this.currentPage !== 'home') this.goHome(false);
+          });
+
+          db.ref('customers/' + currentCustomerId).on('value', snap => {
+            if(snap.exists()) { 
+              let d = snap.val();
+              if (d.saldo !== undefined && !isNaN(Number(d.saldo))) this.userSaldo = Number(d.saldo);
+              if (d.foto) { this.userPhoto = d.foto; localStorage.setItem('siapjek_cust_photo', d.foto); }
+              if (d.nama) { this.userName = d.nama; localStorage.setItem('siapjek_cust_name', d.nama); }
+            } 
+          });
+
+          db.ref('customer_chats/' + currentCustomerId).on('value', snap => {
+            let list = [];
+            if(snap.exists()) { snap.forEach(c => { list.push({ id: c.key, ...c.val() }); }); list.sort((a, b) => (a.waktu || 0) - (b.waktu || 0)); }
+            this.chatHistory = list;
+            setTimeout(() => { let cContainer = document.getElementById('chat-scroll-container'); if (cContainer) cContainer.scrollTop = cContainer.scrollHeight; }, 100);
+          });
+
+          db.ref('settings/top_banner').on('value', snap => {
+            if(snap.exists()) { let b = snap.val(); this.topBanner = { tag: b.tag || 'ASLI SAMUDA', tagColor: b.tagColor || 'bg-orange-500', title: b.title || 'Ojek Online-nya Orang Samuda! 🛵💨', desc: b.desc || 'Cepat, Murah & Siap Antar Samuda dan Sekitarnya', img: b.img || b.gambar || 'https://cdn-icons-png.flaticon.com/512/3097/3097180.png' }; }
+          });
+
+          db.ref('settings/notice').on('value', snap => { if(snap.exists()) this.runningText = snap.val(); });
+
+          db.ref('settings/app_config').on('value', snap => {
+            if(snap.exists()) {
+              let cfg = snap.val();
+              this.systemSettings = {
+                tarif_dasar_motor: Number(cfg.tarif_dasar_motor || 5000),
+                tarif_per_km_motor: Number(cfg.tarif_per_km_motor || 2000),
+                tarif_dasar_jastip: Number(cfg.tarif_dasar_jastip || 7000),
+                tarif_per_km_jastip: Number(cfg.tarif_per_km_jastip || 2500),
+                komisi_persen: Number(cfg.komisi_persen || 15),
+                admin_wa: cfg.admin_wa || this.adminWA,
+                buka_fitur_topup_pelanggan: cfg.buka_fitur_topup_pelanggan ?? true,
+                buka_fitur_tarik_pelanggan: cfg.buka_fitur_tarik_pelanggan ?? true,
+                pesan_fitur_saldo: cfg.pesan_fitur_saldo || 'Fitur belum bisa digunakan'
+              };
+              if (cfg.admin_wa) this.adminWA = cfg.admin_wa;
+              this.updateRoutingAndOngkirGoogle();
+            }
+          });
+
+          db.ref('settings/bank_admin').on('value', snap => {
+            let list = [];
+            if(snap.exists()) {
+              let r = snap.val();
+              if (r.nama_rekening || r.nomor_rekening || r.nama_bank || r.bank || r.nomor) {
+                list.push({ bank: r.nama_bank || r.bank || 'Bank', nomor: r.nomor_rekening || r.nomor || '-', atas_nama: r.nama_rekening || r.atas_nama || 'Admin' });
+              } else {
+                snap.forEach(c => { let val = c.val(); list.push({ bank: val.bank || val.nama_bank || 'Bank', nomor: val.nomor || val.nomor_rekening || '-', atas_nama: val.nama_rekening || val.atas_nama || 'Admin' }); });
+              }
+            }
+            this.rekeningAdmin = list;
+          });
+
+          db.ref('settings/promos').on('value', snap => {
+            let list = [];
+            if(snap.exists()) { snap.forEach(child => { list.push({ id: child.key, title: child.val().title || 'Promo', img: child.val().gambar || child.val().img || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&auto=format&fit=crop&q=80' }); }); this.adminPromos = list; this.initPromoSwiper(); }
+          });
+
+          db.ref('merchants').on('value', snap => {
+            let list = [];
+            if(snap.exists()) { 
+              snap.forEach(child => { 
+                let t = child.val(); 
+                let isOpenStatus = true;
+                if (t.is_open !== undefined) isOpenStatus = Boolean(t.is_open);
+                else if (t.is_buka !== undefined) isOpenStatus = Boolean(t.is_buka);
+                else if (t.status !== undefined) isOpenStatus = (String(t.status).toLowerCase() === 'buka' || String(t.status).toLowerCase() === 'active' || t.status === true);
+
+                list.push({ 
+                  id: String(child.key), 
+                  name: t.nama_toko || t.nama || 'Toko', 
+                  category: String(t.kategori || 'Makanan').trim(), 
+                  address: t.alamat_lengkap || '-', 
+                  lat: Number(t.lat || -2.9818), 
+                  lng: Number(t.lng || 112.9739), 
+                  isMitra: t.is_mitra ?? true, 
+                  is_open: isOpenStatus, 
+                  jam_buka: t.jam_buka || '08:00', 
+                  jam_tutup: t.jam_tutup || '21:00', 
+                  image: t.foto_toko || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&auto=format&fit=crop&q=80' 
+                }); 
+              }); 
+            }
+            this.merchants = list;
+          });
+
+          db.ref('produk').on('value', snap => {
+            let map = {}, flatList = [];
+            if(snap.exists()) {
+              snap.forEach(tokoChild => {
+                let tokoId = String(tokoChild.key); map[tokoId] = [];
+                let merchantObj = this.getMerchantByTokoId(tokoId);
+                tokoChild.forEach(prodChild => {
+                  let p = prodChild.val(), nama = p.nama_produk || p.nama, harga = Number(p.harga || 0);
+                  if (nama && harga > 0) {
+                    let listVarian = [];
+                    if (Array.isArray(p.variations)) listVarian = p.variations;
+                    else if (Array.isArray(p.variatons)) listVarian = p.variatons;
+                    else if (typeof p.variations === 'object' && p.variations !== null) listVarian = Object.values(p.variations);
+
+                    let prodItem = { 
+                      id: String(prodChild.key), 
+                      tokoId: tokoId, 
+                      name: nama, 
+                      price: harga, 
+                      priceFormatted: 'Rp ' + harga.toLocaleString('id-ID'), 
+                      description: p.deskripsi || '', 
+                      img: p.foto_produk || p.gambar || 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=200&auto=format&fit=crop&q=80', 
+                      categoryBadge: merchantObj ? merchantObj.category : (p.kategori || 'Umum'), 
+                      isPromo: p.is_promo || false, 
+                      variations: listVarian,
+                      sold_count: Number(p.sold_count || 0), 
+                      rating: p.rating || '4.8',
+                      isAvailable: p.is_available ?? true 
+                    };
+                    map[tokoId].push(prodItem); 
+                    flatList.push(prodItem);
+                  }
+                });
+              });
+            }
+            this.productsMap = map; this.allProductsList = flatList;
+          });
+
+          db.ref('orders').orderByChild('customer_id').equalTo(currentCustomerId).on('value', snap => {
+            let ordersList = [];
+            if(snap.exists()) { 
+              snap.forEach(child => { 
+                ordersList.unshift({ id: child.key, ...child.val() }); 
+              }); 
+            }
+            this.myOrders = [...ordersList];
+            
+            if (this.showDriverChatModal && this.activeDriverChatOrder) {
+              let updatedCurrentOrder = ordersList.find(o => o.id === this.activeDriverChatOrder.id);
+              if (updatedCurrentOrder) {
+                this.activeDriverChatOrder = updatedCurrentOrder;
+              }
+            }
+
+            this.syncOrderChatListeners(ordersList);
+          });
+
+          db.ref('orders').orderByChild('customer_id').equalTo(currentCustomerId).on('child_changed', snapshot => {
+            let ord = snapshot.val();
+            let statusLama = this.lastNotifiedOrderStatus[ord.id];
+            
+            if (statusLama && statusLama !== ord.status) {
+              let pesanNotif = `Pesanan Anda kini: ${ord.status}`;
+              let ikonNotif = 'fa-solid fa-motorcycle';
+              
+              if (ord.status === 'diambil_driver' || ord.status === 'mengantar') {
+                pesanNotif = 'Driver sedang dalam perjalanan mengantar pesanan Anda!';
+              } else if (ord.status === 'driver_tiba' || ord.status === 'sampai_lokasi') {
+                pesanNotif = 'Driver sudah tiba di titik lokasi!';
+              }
+
+              this.triggerFloatingNotification(
+                'Pembaruan Pesanan 📦', 
+                pesanNotif, 
+                ikonNotif, 
+                'Lacak Peta', 
+                'track_order', 
+                ord
+              );
+            }
+            this.lastNotifiedOrderStatus[ord.id] = ord.status;
+          });
+
+          db.ref('mutasi_saldo').orderByChild('user_id').equalTo(currentCustomerId).limitToLast(50).on('value', snap => {
+            let mutasiList = [];
+            if(snap.exists()) { snap.forEach(child => { mutasiList.unshift(child.val()); }); }
+            this.myMutasi = mutasiList;
+          });
+        },
+
+        syncOrderChatListeners(orders) {
+          globalActiveOrdersChatRefs.forEach(refObj => {
+            refObj.ref.off('value', refObj.callback);
+          });
+          globalActiveOrdersChatRefs = [];
+
+          let activeOrderIds = [];
+
+          orders.forEach(ord => {
+            if (ord.id && !['selesai', 'dibatalkan', 'ditolak'].includes(ord.status)) {
+              activeOrderIds.push(ord.id);
+              let chatRef = db.ref('order_chats/' + ord.id);
+              let isFirstChatLoad = true;
+
+              let callback = chatRef.on('value', snap => {
+                let unreadCount = 0;
+                let latestDriverMsg = null;
+                if (snap.exists()) {
+                  snap.forEach(c => {
+                    let msg = c.val();
+                    if (msg && msg.pengirim === 'driver' && !msg.dibaca) {
+                      unreadCount++;
+                      latestDriverMsg = msg;
+                    }
+                  });
+                }
+
+                let oldUnread = this.unreadOrderChats[ord.id] || 0;
+                this.unreadOrderChats[ord.id] = unreadCount;
+                
+                let totalUnreadGlobal = Object.keys(this.unreadOrderChats)
+                  .filter(id => activeOrderIds.includes(id))
+                  .reduce((a, b) => a + (this.unreadOrderChats[b] || 0), 0);
+                  
+                this.unreadDriverChatCount = totalUnreadGlobal;
+
+                if (!isFirstChatLoad && unreadCount > oldUnread && latestDriverMsg) {
+                  this.triggerFloatingNotification(
+                    `💬 Pesan dari ${ord.driver_nama || 'Driver'}`,
+                    latestDriverMsg.pesan,
+                    'fa-solid fa-comments',
+                    'Balas Chat',
+                    'chat_driver',
+                    ord
+                  );
+                }
+                isFirstChatLoad = false;
+              });
+
+              globalActiveOrdersChatRefs.push({ ref: chatRef, callback: callback });
+            } else if (ord.id && ['selesai', 'dibatalkan', 'ditolak'].includes(ord.status)) {
+              delete this.unreadOrderChats[ord.id];
+            }
+          });
+
+          let totalUnreadGlobal = Object.keys(this.unreadOrderChats)
+            .filter(id => activeOrderIds.includes(id))
+            .reduce((a, b) => a + (this.unreadOrderChats[b] || 0), 0);
+            
+          this.unreadDriverChatCount = totalUnreadGlobal;
+        },
+
+        hubungiDriverAktif() {
+          let activeOrder = this.myOrders.find(ord => 
+            ord.driver_id && 
+            !['selesai', 'dibatalkan', 'ditolak'].includes(ord.status)
+          );
+
+          if (activeOrder) {
+            this.bukaChatDriver(activeOrder);
+          } else {
+            this.showAlert('⚠️ Anda tidak memiliki pesanan aktif yang sedang ditangani driver saat ini.');
+          }
+        },
+
+        bukaChatDriver(ord) {
+          if (!ord.driver_id) return;
+          
+          if (driverChatRef) {
+            driverChatRef.off();
+            driverChatRef = null;
+          }
+
+          this.activeDriverChatOrder = ord;
+          this.driverChatHistory = [];
+          this.showDriverChatModal = true;
+
+          db.ref('order_chats/' + ord.id).once('value', snap => {
+            if (snap.exists()) {
+              snap.forEach(c => {
+                let msg = c.val();
+                if (msg && msg.pengirim === 'driver' && !msg.dibaca) {
+                  db.ref('order_chats/' + ord.id + '/' + c.key).update({ dibaca: true });
+                }
+              });
+            }
+          });
+
+          this.unreadOrderChats[ord.id] = 0;
+          let activeOrderIds = this.myOrders
+            .filter(o => !['selesai', 'dibatalkan', 'ditolak'].includes(o.status))
+            .map(o => o.id);
+            
+          this.unreadDriverChatCount = Object.keys(this.unreadOrderChats)
+            .filter(id => activeOrderIds.includes(id))
+            .reduce((a, b) => a + (this.unreadOrderChats[b] || 0), 0);
+
+          driverChatRef = db.ref('order_chats/' + ord.id);
+          driverChatRef.on('value', snap => {
+            let list = [];
+            if (snap.exists()) {
+              snap.forEach(c => {
+                list.push({ id: c.key, ...c.val() });
+              });
+              list.sort((a, b) => (a.waktu || 0) - (b.waktu || 0));
+            }
+            this.driverChatHistory = list;
+            setTimeout(() => {
+              let cContainer = document.getElementById('driver-chat-scroll-container');
+              if (cContainer) cContainer.scrollTop = cContainer.scrollHeight;
+            }, 50);
+          });
+        },
+
+        tutupDriverChatModal() {
+          this.showDriverChatModal = false;
+          if (driverChatRef) {
+            driverChatRef.off();
+            driverChatRef = null;
+          }
+        },
+
+        sendDriverChat() {
+          if (!this.driverChatInputText.trim() || !this.activeDriverChatOrder) return;
+          let msgId = 'DCHAT_' + Date.now();
+          let text = this.driverChatInputText.trim();
+          this.driverChatInputText = '';
+
+          db.ref('order_chats/' + this.activeDriverChatOrder.id + '/' + msgId).set({
+            id: msgId,
+            pengirim: 'customer',
+            pesan: text,
+            waktu: Date.now(),
+            dibaca: false
+          });
+        },
+
+        bukaDetailProduk(product) {
+          let merchantObj = this.getMerchantByTokoId(product.tokoId);
+          if (merchantObj && !merchantObj.is_open) return this.showAlert('⚠️ Toko sedang tutup.');
+          if (!product.isAvailable) return this.showAlert('⚠️ Stok produk sedang habis.');
+
+          this.selectedProductDetail = product;
+          this.selectedVariantObj = (product.variations && product.variations.length > 0) ? product.variations[0] : null;
+          this.selectedVariantNote = '';
+          this.detailQty = 1;
+          this.showProductDetailModal = true;
+        },
+
+        tambahDetailKeKeranjang() {
+          if (!this.selectedProductDetail) return;
+          let p = this.selectedProductDetail;
+
+          if (p.variations && p.variations.length > 0 && !this.selectedVariantObj) {
+            return this.showAlert('⚠️ Silakan pilih varian produk terlebih dahulu!');
+          }
+
+          if (this.cart.length > 0 && String(this.cart[0].tokoId) !== String(p.tokoId)) {
+            return this.showAlert('⚠️ Memesan hanya bisa dari 1 Toko yang sama dalam satu keranjang.');
+          }
+          
+          let hargaVarian = this.selectedVariantObj ? Number(this.selectedVariantObj.harga || this.selectedVariantObj.price || 0) : 0;
+          let hargaTotalUnit = Number(p.price) + hargaVarian;
+          let labelVarian = this.selectedVariantObj ? (this.selectedVariantObj.nama || this.selectedVariantObj.name || '') : '';
+          let catatanFull = [labelVarian, this.selectedVariantNote].filter(Boolean).join(' - ');
+
+          let existing = this.cart.find(item => item.id === p.id && item.variant === catatanFull);
+          if (existing) {
+            existing.qty += this.detailQty;
+          } else {
+            this.cart.push({ 
+              ...p, 
+              price: hargaTotalUnit, 
+              priceFormatted: 'Rp ' + hargaTotalUnit.toLocaleString('id-ID'), 
+              qty: this.detailQty, 
+              variant: catatanFull 
+            });
+          }
+          this.triggerFlyBadge(p.id);
+          this.showProductDetailModal = false;
+        },
+
+        pesanDetailLangsung() {
+          if (!this.selectedProductDetail) return;
+          let p = this.selectedProductDetail;
+
+          if (p.variations && p.variations.length > 0 && !this.selectedVariantObj) {
+            return this.showAlert('⚠️ Silakan pilih varian produk terlebih dahulu!');
+          }
+
+          this.showProductDetailModal = false;
+          
+          let merchantObj = this.getMerchantByTokoId(p.tokoId);
+          this.orderFormType = 'mitra'; 
+          qtyPesananAktif = this.detailQty;
+          
+          let hargaVarian = this.selectedVariantObj ? Number(this.selectedVariantObj.harga || this.selectedVariantObj.price || 0) : 0;
+          let hargaTotalUnit = Number(p.price) + hargaVarian;
+          let labelVarian = this.selectedVariantObj ? (this.selectedVariantObj.nama || this.selectedVariantObj.name || '') : '';
+          let catatanFull = [labelVarian, this.selectedVariantNote].filter(Boolean).join(' - ');
+
+          dataCheckoutAktif = { 
+            id: p.id, tokoId: p.tokoId || '', 
+            name: p.name + (catatanFull ? ` (${catatanFull})` : ''), 
+            category: p.categoryBadge, price: hargaTotalUnit, 
+            items: [{ id: p.id, name: p.name, price: hargaTotalUnit, qty: this.detailQty, variant: catatanFull }] 
+          };
+          
+          let tLat = Number(merchantObj?.lat || -2.9818), tLng = Number(merchantObj?.lng || 112.9739);
+          let alamatAsli = merchantObj?.address ? merchantObj.address.trim() : "-";
+          this.isAlamatTerkunci = (alamatAsli !== "" && alamatAsli !== "-");
+
+          this.inputAsalTokoText = alamatAsli; this.inputAsalText = alamatAsli;
+          this.orderFormLabel = dataCheckoutAktif.name;
+          this.inputTujuanText = ''; this.inputCatatanText = catatanFull; this.estimasiModalJastip = ''; this.showFormOrderModal = true;
+          this.initGoogleMapCheckout(tLat, tLng);
+        },
+
+        bukaModalTopUp() { 
+          if (this.systemSettings.buka_fitur_topup_pelanggan === false) {
+            return this.showAlert('⚠️ ' + (this.systemSettings.pesan_fitur_saldo || 'Fitur Top-Up sedang dinonaktifkan oleh Admin.'));
+          }
+          this.topUpStep = 1; 
+          this.inputTopUpNominal = ''; 
+          this.showTopUpModal = true; 
+        },
+
+        lanjutkanTopUp() {
+          let val = parseInt(this.inputTopUpNominal);
+          if (!val || val < 10000) return this.showAlert('⚠️ Minimal top up Rp 10.000');
+          this.nominalTopUpAsli = val; this.kodeUnikTopUp = Math.floor(Math.random() * 999) + 1;
+          this.totalTransferTopUp = this.nominalTopUpAsli + this.kodeUnikTopUp; this.topUpStep = 2;
+        },
+        
+        kirimPermintaanTopUpWA() {
+          let topupId = 'TOPUP_' + Date.now();
+          db.ref('topups/' + topupId).set({ id: topupId, user_id: currentCustomerId, user_nama: this.userName, user_hp: this.userPhone, nominal: this.totalTransferTopUp, metode: 'Transfer Bank', status: 'pending', timestamp: Date.now() }).then(() => {
+            this.sendWA(`Halo Admin SiapJek, konfirmasi *Top Up Saldo*.\n👤 Nama: ${this.userName}\n📱 No HP: ${this.userPhone}\n💵 Nominal Top Up: Rp ${this.nominalTopUpAsli.toLocaleString('id-ID')}\n🔢 Kode Unik: ${this.kodeUnikTopUp}\n💰 *Total Transfer: Rp ${this.totalTransferTopUp.toLocaleString('id-ID')}*`);
+            this.showTopUpModal = false; this.showAlert('✅ Permintaan top-up berhasil masuk!');
+          });
+        },
+        salinTeks(teks) { navigator.clipboard.writeText(teks).then(() => this.showAlert('✅ Rekening disalin: ' + teks)); },
+
+        bukaModalTarikSaldo() { 
+          if (this.systemSettings.buka_fitur_tarik_pelanggan === false) {
+            return this.showAlert('⚠️ ' + (this.systemSettings.pesan_fitur_saldo || 'Fitur Tarik Saldo sedang dinonaktifkan oleh Admin.'));
+          }
+          this.inputTarikNominal = ''; 
+          this.inputTarikTujuan = ''; 
+          this.showTarikModal = true; 
+        },
+
+        kirimPermintaanTarikWA() {
+          let nominal = Number(this.inputTarikNominal);
+          if (!nominal || nominal <= 5000) return this.showAlert('⚠️ Nominal tidak valid!');
+          if (!this.inputTarikTujuan.trim()) return this.showAlert('⚠️ Masukkan rekening tujuan!');
+
+          db.ref('customers/' + currentCustomerId + '/saldo').transaction(currentSaldo => {
+            let s = Number(currentSaldo) || 0;
+            if (s < nominal) return;
+            return s - nominal;
+          }, (err, committed) => {
+            if (!committed) return this.showAlert('❌ Saldo Anda tidak mencukupi untuk penarikan ini.');
+            
+            let wId = 'WD_' + Date.now();
+            db.ref('withdrawals/' + wId).set({ id: wId, user_id: currentCustomerId, user_nama: this.userName, user_hp: this.userPhone, nominal: nominal, info_rekening: this.inputTarikTujuan, status: 'pending', timestamp: Date.now() });
+            db.ref('mutasi_saldo').push({ user_id: currentCustomerId, nominal: nominal, jenis: 'OUT', keterangan: 'Pengajuan Tarik Saldo', timestamp: Date.now() });
+            this.sendWA(`Halo Admin SiapJek, Tarik Saldo.\n👤 Nama: ${this.userName}\n💰 Jumlah: Rp ${nominal.toLocaleString('id-ID')}\n🏦 Tujuan: ${this.inputTarikTujuan}`);
+            this.showTarikModal = false; this.showAlert('✅ Permintaan tarik saldo dikirim!');
+          });
+        },
+
+        bukaFormMotorDirect() {
+          this.orderFormType = 'motor'; this.orderFormLabel = "🛵 Formulir Ojek Motor"; this.isAlamatTerkunci = false;
+          qtyPesananAktif = 1;
+          dataCheckoutAktif = { id: 'OJECK_DIRECT', tokoId: '-', name: 'Layanan Ojek Motor', category: 'Motor', price: 0, items: [] };
+          this.inputAsalText = ''; this.inputTujuanText = ''; this.inputCatatanText = ''; this.estimasiModalJastip = ''; this.showFormOrderModal = true;
+          this.initGoogleMapCheckout(-2.9818, 112.9739);
+        },
+
+        bukaFormJastipDirect() {
+          this.orderFormType = 'jastip'; this.orderFormLabel = "🛍️ Formulir Jastip & Belanja"; this.isAlamatTerkunci = false;
+          qtyPesananAktif = 1;
+          dataCheckoutAktif = { id: 'JASTIP_DIRECT', tokoId: '-', name: 'Layanan Jastip / Belanja', category: 'Jastip', price: 0, items: [] };
+          this.inputAsalText = ''; this.inputTujuanText = ''; this.inputCatatanText = ''; this.estimasiModalJastip = ''; this.showFormOrderModal = true;
+          this.initGoogleMapCheckout(-2.9818, 112.9739);
+        },
+
+        ambilLokasiGPSJemput() {
+          if (!navigator.geolocation) return this.showAlert('⚠️ GPS tidak didukung.');
+          navigator.geolocation.getCurrentPosition((pos) => {
+            this.latAsalToko = pos.coords.latitude; this.lngAsalToko = pos.coords.longitude;
+            let latLng = new google.maps.LatLng(this.latAsalToko, this.lngAsalToko);
+            if (markerCheckoutAsalGoogle) { 
+              markerCheckoutAsalGoogle.setPosition(latLng); 
+              if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter(latLng);
+            }
+            let geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: latLng }, (results, status) => {
+              if (status === 'OK' && results[0]) {
+                this.inputAsalText = results[0].formatted_address;
+              }
+            });
+            this.updateRoutingAndOngkirGoogle(); this.showAlert('✅ Titik jemput dikunci!');
+          }, () => this.showAlert('❌ Gagal mengambil GPS.'));
+        },
+
+        ambilLokasiGPSAsalJastip() {
+          if (!navigator.geolocation) return this.showAlert('⚠️ GPS tidak didukung.');
+          navigator.geolocation.getCurrentPosition((pos) => {
+            this.latAsalToko = pos.coords.latitude; this.lngAsalToko = pos.coords.longitude;
+            let latLng = new google.maps.LatLng(this.latAsalToko, this.lngAsalToko);
+            if (markerCheckoutAsalGoogle) { 
+              markerCheckoutAsalGoogle.setPosition(latLng); 
+              if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter(latLng);
+            }
+            let geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: latLng }, (results, status) => {
+              if (status === 'OK' && results[0]) {
+                this.inputAsalText = results[0].formatted_address;
+              }
+            });
+            this.updateRoutingAndOngkirGoogle(); this.showAlert('✅ Titik belanja dikunci!');
+          }, () => this.showAlert('❌ Gagal mengambil GPS.'));
+        },
+
+        // PENCARIAN ALAMAT ASAL (OPTIMAL UNTUK APK LOADER & WEBVIEW)
+        cariAlamatJemput() {
+          let q = this.inputAsalText ? this.inputAsalText.trim() : ''; 
+          if (!q || q.length < 2) return this.showAlert('⚠️ Ketik minimal 2 huruf nama lokasi/toko/jalan!');
+          
+          this.ongkirStatusText = "🔍 Mencari lokasi...";
+          this.isLoadingSearch = true;
+
+          let keywordSearch = q.toLowerCase().includes('samuda') ? q : `${q}, Samuda`;
+
+          // METODE 1: Places Service via Text Search (Paling Tahan Banting di WebView)
+          try {
+            let dummyDiv = document.createElement('div');
+            let mapObj = mapCheckoutGoogle || new google.maps.Map(dummyDiv);
+            let service = new google.maps.places.PlacesService(mapObj);
+
+            service.textSearch({ query: keywordSearch }, (results, status) => {
+              if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+                this.isLoadingSearch = false;
+                let place = results[0];
+                let loc = place.geometry.location;
+
+                this.latAsalToko = loc.lat();
+                this.lngAsalToko = loc.lng();
+                this.inputAsalText = place.formatted_address || place.name || q;
+
+                let latLng = new google.maps.LatLng(this.latAsalToko, this.lngAsalToko);
+                if (markerCheckoutAsalGoogle) markerCheckoutAsalGoogle.setPosition(latLng);
+                if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter(latLng);
+                this.updateRoutingAndOngkirGoogle();
+              } else {
+                // METODE 2: Fallback ke Geocoder jika Places gagal
+                this.fallbackGeocodeAsal(q);
+              }
+            });
+          } catch (err) {
+            this.fallbackGeocodeAsal(q);
+          }
+        },
+
+        fallbackGeocodeAsal(q) {
+          let geocoder = new google.maps.Geocoder();
+          let searchTerms = [q, `${q}, Samuda`, `${q}, Kotawaringin Timur`];
+
+          const tryNext = (idx) => {
+            if (idx >= searchTerms.length) {
+              this.isLoadingSearch = false;
+              this.showAlert('❌ Lokasi tidak ditemukan. Silakan geser Pin Kursor Hijau di peta.');
+              this.ongkirStatusText = "Geser PIN Kursor di peta untuk menentukan lokasi.";
+              return;
+            }
+
+            geocoder.geocode({ address: searchTerms[idx] }, (results, status) => {
+              if (status === 'OK' && results && results[0]) {
+                this.isLoadingSearch = false;
+                let loc = results[0].geometry.location;
+                this.latAsalToko = loc.lat();
+                this.lngAsalToko = loc.lng();
+                this.inputAsalText = results[0].formatted_address || q;
+
+                let latLng = new google.maps.LatLng(this.latAsalToko, this.lngAsalToko);
+                if (markerCheckoutAsalGoogle) markerCheckoutAsalGoogle.setPosition(latLng);
+                if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter(latLng);
+                this.updateRoutingAndOngkirGoogle();
+              } else {
+                tryNext(idx + 1);
+              }
+            });
+          };
+
+          tryNext(0);
+        },
+
+        // PENCARIAN ALAMAT TUJUAN (OPTIMAL UNTUK APK LOADER & WEBVIEW)
+        cariAlamatTujuan() {
+          let query = this.inputTujuanText ? this.inputTujuanText.trim() : ''; 
+          if (!query || query.length < 2) return this.showAlert('⚠️ Ketik minimal 2 huruf nama lokasi/toko/jalan!');
+          
+          this.ongkirStatusText = "🔍 Mencari lokasi tujuan...";
+          this.isLoadingSearch = true;
+
+          let keywordSearch = query.toLowerCase().includes('samuda') ? query : `${query}, Samuda`;
+
+          // METODE 1: Places Service via Text Search
+          try {
+            let dummyDiv = document.createElement('div');
+            let mapObj = mapCheckoutGoogle || new google.maps.Map(dummyDiv);
+            let service = new google.maps.places.PlacesService(mapObj);
+
+            service.textSearch({ query: keywordSearch }, (results, status) => {
+              if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+                this.isLoadingSearch = false;
+                let place = results[0];
+                let loc = place.geometry.location;
+
+                this.latTujuanPelanggan = loc.lat();
+                this.lngTujuanPelanggan = loc.lng();
+                this.inputTujuanText = place.formatted_address || place.name || query;
+
+                let latLng = new google.maps.LatLng(this.latTujuanPelanggan, this.lngTujuanPelanggan);
+                if (markerCheckoutTujuanGoogle) markerCheckoutTujuanGoogle.setPosition(latLng);
+                if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter(latLng);
+                this.updateRoutingAndOngkirGoogle();
+              } else {
+                // METODE 2: Fallback ke Geocoder jika Places gagal
+                this.fallbackGeocodeTujuan(query);
+              }
+            });
+          } catch (err) {
+            this.fallbackGeocodeTujuan(query);
+          }
+        },
+
+        fallbackGeocodeTujuan(query) {
+          let geocoder = new google.maps.Geocoder();
+          let searchTerms = [query, `${query}, Samuda`, `${query}, Kotawaringin Timur`];
+
+          const tryNext = (idx) => {
+            if (idx >= searchTerms.length) {
+              this.isLoadingSearch = false;
+              this.showAlert('❌ Alamat tujuan tidak ditemukan. Silakan geser Pin Kursor Merah di peta.');
+              this.ongkirStatusText = "Geser PIN Kursor di peta untuk menentukan lokasi.";
+              return;
+            }
+
+            geocoder.geocode({ address: searchTerms[idx] }, (results, status) => {
+              if (status === 'OK' && results && results[0]) {
+                this.isLoadingSearch = false;
+                let loc = results[0].geometry.location;
+                this.latTujuanPelanggan = loc.lat();
+                this.lngTujuanPelanggan = loc.lng();
+                this.inputTujuanText = results[0].formatted_address || query;
+
+                let latLng = new google.maps.LatLng(this.latTujuanPelanggan, this.lngTujuanPelanggan);
+                if (markerCheckoutTujuanGoogle) markerCheckoutTujuanGoogle.setPosition(latLng);
+                if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter(latLng);
+                this.updateRoutingAndOngkirGoogle();
+              } else {
+                tryNext(idx + 1);
+              }
+            });
+          };
+
+          tryNext(0);
+        },
+
+        bukaFormPesananDariItem(product) {
+          let merchantObj = this.getMerchantByTokoId(product.tokoId);
+          if (merchantObj && !merchantObj.is_open) return this.showAlert('⚠️ Toko Sedang Tutup.');
+
+          this.orderFormType = 'mitra'; 
+          qtyPesananAktif = 1;
+          dataCheckoutAktif = { id: product.id, tokoId: product.tokoId || '', name: product.name, category: product.categoryBadge, price: Number(product.price), items: [{ id: product.id, name: product.name, price: Number(product.price), qty: 1 }] };
+          
+          let tLat = Number(merchantObj?.lat || -2.9818), tLng = Number(merchantObj?.lng || 112.9739);
+          let alamatAsli = merchantObj?.address ? merchantObj.address.trim() : "-";
+          this.isAlamatTerkunci = (alamatAsli !== "" && alamatAsli !== "-");
+
+          this.inputAsalTokoText = alamatAsli; this.inputAsalText = alamatAsli;
+          
+          if (merchantObj && !merchantObj.isMitra) {
+            this.orderFormLabel = "⚠️ JASTIP - " + dataCheckoutAktif.name;
+            dataCheckoutAktif.price = 0; 
+          } else {
+            this.orderFormLabel = dataCheckoutAktif.name;
+          }
+
+          this.inputTujuanText = ''; this.inputCatatanText = ''; this.estimasiModalJastip = ''; this.showFormOrderModal = true;
+          this.initGoogleMapCheckout(tLat, tLng);
+        },
+
+        cekDanLanjutCheckout() {
+          if (this.cart.length === 0) return;
+          let currentTokoId = [...new Set(this.cart.map(i => i.tokoId).filter(Boolean))][0];
+          let merchantObj = this.getMerchantByTokoId(currentTokoId);
+          if (merchantObj && !merchantObj.is_open) { this.showAlert('⚠️ Toko dalam keranjang sedang Tutup.'); return; }
+          this.showCartModal = false; this.bukaFormCheckoutKeranjang();
+        },
+
+        bukaFormCheckoutKeranjang() {
+          let currentTokoId = [...new Set(this.cart.map(i => i.tokoId).filter(Boolean))][0];
+          let merchantObj = this.getMerchantByTokoId(currentTokoId);
+          this.orderFormType = 'mitra'; qtyPesananAktif = 1;
+          dataCheckoutAktif = { id: 'CART_MULTIPLE', tokoId: currentTokoId, name: this.cart.map(i => `${i.name}${i.variant ? ' ('+i.variant+')' : ''} (x${i.qty})`).join(', '), category: 'Keranjang', price: this.getTotalPrice(), items: this.cart.map(i => ({...i})) };
+          let tLat = Number(merchantObj?.lat || -2.9818), tLng = Number(merchantObj?.lng || 112.9739);
+          let alamatAsli = merchantObj?.address ? merchantObj.address.trim() : "-";
+          this.isAlamatTerkunci = (alamatAsli !== "" && alamatAsli !== "-");
+          this.inputAsalTokoText = alamatAsli; this.inputAsalText = alamatAsli;
+          this.orderFormLabel = "Item Keranjang (" + this.getTotalItems() + " Barang)";
+          this.inputTujuanText = ''; this.inputCatatanText = ''; this.estimasiModalJastip = ''; this.showFormOrderModal = true;
+          this.initGoogleMapCheckout(tLat, tLng);
+        },
+
+        initGoogleMapCheckout(tLat, tLng) {
+          if (tLat && tLng) { this.latAsalToko = tLat; this.lngAsalToko = tLng; }
+          this.latTujuanPelanggan = this.latAsalToko + 0.0025; this.lngTujuanPelanggan = this.lngAsalToko + 0.0025;
+          
+          this.$nextTick(() => {
+            setTimeout(() => {
+              let mapElement = document.getElementById('google-map-checkout'); 
+              if (!mapElement) return;
+
+              let centerPos = { lat: this.latAsalToko, lng: this.lngAsalToko };
+              mapCheckoutGoogle = new google.maps.Map(mapElement, {
+                center: centerPos,
+                zoom: 14,
+                disableDefaultUI: true,
+                zoomControl: true
+              });
+
+              directionsServiceGoogle = new google.maps.DirectionsService();
+              directionsRendererGoogle = new google.maps.DirectionsRenderer({
+                map: mapCheckoutGoogle,
+                suppressMarkers: true,
+                polylineOptions: { strokeColor: '#2563eb', strokeWeight: 6, strokeOpacity: 0.85 }
+              });
+
+              // PIN KURSOR JEMPUT / ASAL (HIJAU)
+              markerCheckoutAsalGoogle = new google.maps.Marker({
+                position: centerPos,
+                map: mapCheckoutGoogle,
+                draggable: !this.isAlamatTerkunci,
+                title: 'Titik Jemput / Toko',
+                icon: pinCursorIconAsal
+              });
+
+              if (!this.isAlamatTerkunci) {
+                markerCheckoutAsalGoogle.addListener('dragend', () => {
+                  let pos = markerCheckoutAsalGoogle.getPosition();
+                  this.latAsalToko = pos.lat();
+                  this.lngAsalToko = pos.lng();
+                  let geocoder = new google.maps.Geocoder();
+                  geocoder.geocode({ location: pos }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                      this.inputAsalText = results[0].formatted_address;
+                    }
+                  });
+                  this.updateRoutingAndOngkirGoogle();
+                });
+              }
+
+              // PIN KURSOR TUJUAN (MERAH)
+              let tujuanPos = { lat: this.latTujuanPelanggan, lng: this.lngTujuanPelanggan };
+              markerCheckoutTujuanGoogle = new google.maps.Marker({
+                position: tujuanPos,
+                map: mapCheckoutGoogle,
+                draggable: true,
+                title: 'Titik Tujuan Pengantaran',
+                icon: pinCursorIconTujuan
+              });
+
+              markerCheckoutTujuanGoogle.addListener('dragend', () => {
+                let pos = markerCheckoutTujuanGoogle.getPosition();
+                this.latTujuanPelanggan = pos.lat();
+                this.lngTujuanPelanggan = pos.lng();
+                let geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ location: pos }, (results, status) => {
+                  if (status === 'OK' && results[0]) {
+                    this.inputTujuanText = results[0].formatted_address;
+                  }
+                });
+                this.updateRoutingAndOngkirGoogle();
+              });
+
+              this.updateRoutingAndOngkirGoogle();
+            }, 150);
+          });
+        },
+
+        ambilLokasiGPSPelanggan() {
+          if (!navigator.geolocation) { return this.showAlert('⚠️ GPS tidak didukung.'); }
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              this.latTujuanPelanggan = position.coords.latitude; this.lngTujuanPelanggan = position.coords.longitude;
+              let latLng = new google.maps.LatLng(this.latTujuanPelanggan, this.lngTujuanPelanggan);
+              if (markerCheckoutTujuanGoogle) { 
+                markerCheckoutTujuanGoogle.setPosition(latLng); 
+                if (mapCheckoutGoogle) mapCheckoutGoogle.setCenter(latLng);
+              }
+              let geocoder = new google.maps.Geocoder();
+              geocoder.geocode({ location: latLng }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                  this.inputTujuanText = results[0].formatted_address;
+                }
+              });
+              this.updateRoutingAndOngkirGoogle(); this.showAlert('✅ Titik GPS Anda terkunci!');
+            },
+            () => { this.showAlert('❌ Gagal mendeteksi lokasi GPS.'); },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        },
+
+        hitungTotalSubtotalDanOngkir() {
+          let subtotal = dataCheckoutAktif ? Number(dataCheckoutAktif.price || 0) * Number(qtyPesananAktif || 1) : 0;
+          return subtotal + Number(ongkirFinal || 0);
+        },
+
+        // GARIS RUTE MENGIKUTI JALAN
+        updateRoutingAndOngkirGoogle() {
+          if (!mapCheckoutGoogle || !directionsServiceGoogle || !directionsRendererGoogle) return;
+          this.ongkirStatusText = "Menghitung rute jalan...";
+
+          let origin = { lat: Number(this.latAsalToko), lng: Number(this.lngAsalToko) };
+          let destination = { lat: Number(this.latTujuanPelanggan), lng: Number(this.lngTujuanPelanggan) };
+
+          directionsServiceGoogle.route({
+            origin: origin,
+            destination: destination,
+            travelMode: google.maps.TravelMode.DRIVING
+          }, (response, status) => {
+            if (status === 'OK' && response && response.routes && response.routes.length > 0) {
+              directionsRendererGoogle.setMap(mapCheckoutGoogle);
+              directionsRendererGoogle.setDirections(response);
+
+              let route = response.routes[0];
+              let distanceMeters = route.legs[0].distance.value;
+              jarakKmFinal = Number((distanceMeters / 1000).toFixed(2));
+
+              let dasar = (this.orderFormType === 'jastip') ? (this.systemSettings?.tarif_dasar_jastip || 7000) : (this.systemSettings?.tarif_dasar_motor || 5000);
+              let perKm = (this.orderFormType === 'jastip') ? (this.systemSettings?.tarif_per_km_jastip || 2500) : (this.systemSettings?.tarif_per_km_motor || 2000);
+
+              ongkirFinal = dasar + (jarakKmFinal > 2 ? Math.ceil(jarakKmFinal - 2) * perKm : 0);
+              let totalSemua = this.hitungTotalSubtotalDanOngkir();
+              
+              this.ongkirStatusText = `Jarak: ${jarakKmFinal} km | Ongkir: Rp ${ongkirFinal.toLocaleString('id-ID')} | Total: Rp ${totalSemua.toLocaleString('id-ID')}`;
+            } else {
+              jarakKmFinal = Number(this.hitungJarakKm(this.latAsalToko, this.lngAsalToko, this.latTujuanPelanggan, this.lngTujuanPelanggan).toFixed(2));
+              let dasar = (this.orderFormType === 'jastip') ? (this.systemSettings?.tarif_dasar_jastip || 7000) : (this.systemSettings?.tarif_dasar_motor || 5000);
+              let perKm = (this.orderFormType === 'jastip') ? (this.systemSettings?.tarif_per_km_jastip || 2500) : (this.systemSettings?.tarif_per_km_motor || 2000);
+
+              ongkirFinal = dasar + (jarakKmFinal > 2 ? Math.ceil(jarakKmFinal - 2) * perKm : 0);
+              let totalSemua = this.hitungTotalSubtotalDanOngkir();
+              this.ongkirStatusText = `Jarak: ${jarakKmFinal} km | Ongkir: Rp ${ongkirFinal.toLocaleString('id-ID')} | Total: Rp ${totalSemua.toLocaleString('id-ID')}`;
+            }
+          });
+        },
+
+        kirimOrderKeFirebase() {
+          if (this.isSubmitting) return;
+
+          let merchantObj = this.getMerchantByTokoId(dataCheckoutAktif.tokoId);
+          if (merchantObj && !merchantObj.is_open) return this.showAlert('⚠️ Toko Sedang Tutup.');
+
+          let asal = (this.orderFormType === 'mitra' && this.isAlamatTerkunci) ? this.inputAsalTokoText.trim() : this.inputAsalText.trim();
+          let tujuan = this.inputTujuanText ? this.inputTujuanText.trim() : "";
+          if (!tujuan || !asal) return this.showAlert("⚠️ Mohon lengkapi titik jemput & tujuan pengantaran!");
+
+          let finalLatTujuan = this.latTujuanPelanggan;
+          let finalLngTujuan = this.lngTujuanPelanggan;
+          if (markerCheckoutTujuanGoogle) {
+            let posTujuan = markerCheckoutTujuanGoogle.getPosition();
+            finalLatTujuan = posTujuan.lat();
+            finalLngTujuan = posTujuan.lng();
+          }
+
+          let totalBayar = this.hitungTotalSubtotalDanOngkir();
+          this.isSubmitting = true;
+
+          const eksekusiBuatOrder = () => {
+            let komisiSistem = (ongkirFinal * (this.systemSettings?.komisi_persen || 15)) / 100;
+            let orderId = 'ORD_' + Date.now();
+            
+            let catatanLengkap = this.inputCatatanText.trim();
+            if (this.orderFormType === 'jastip' && this.estimasiModalJastip) {
+              catatanLengkap += ` [Est. Modal: Rp ${Number(this.estimasiModalJastip).toLocaleString('id-ID')}]`;
+            }
+
+            let isMitraToko = merchantObj ? (merchantObj.isMitra === true && this.isAlamatTerkunci) : false;
+            let isJastipAtauMotor = (this.orderFormType === 'motor' || this.orderFormType === 'jastip' || dataCheckoutAktif.tokoId === '-');
+            
+            let statusAwal = (isMitraToko && !isJastipAtauMotor) ? "waiting_merchant" : "waiting_driver";
+            let layananLabel = this.orderFormType === 'motor' ? 'motor' : (this.orderFormType === 'jastip' ? 'jastip' : 'kuliner');
+
+            let orderPayload = {
+              id: orderId, 
+              customer_id: currentCustomerId, 
+              customer_nama: this.userName, 
+              customer_hp: this.userPhone,
+              toko_id: dataCheckoutAktif.tokoId || "-", 
+              toko_nama: merchantObj?.name || (this.orderFormType === 'motor' ? 'Ojek Motor' : 'Layanan Jastip'), 
+              nama_produk: dataCheckoutAktif.name, 
+              detail_pesanan: dataCheckoutAktif.items || [], 
+              harga_total: totalBayar, 
+              ongkir: ongkirFinal, 
+              potongan_komisi: komisiSistem, 
+              jarak_km: jarakKmFinal, 
+              titik_jemput: asal, 
+              titik_tujuan: tujuan, 
+              catatan_pesanan: catatanLengkap, 
+              metode_pembayaran: this.metodePembayaran, 
+              lat_jemput: markerCheckoutAsalGoogle ? markerCheckoutAsalGoogle.getPosition().lat() : this.latAsalToko, 
+              lng_jemput: markerCheckoutAsalGoogle ? markerCheckoutAsalGoogle.getPosition().lng() : this.lngAsalToko, 
+              lat_tujuan: finalLatTujuan, 
+              lng_tujuan: finalLngTujuan, 
+              status: statusAwal, 
+              is_mitra: isMitraToko && !isJastipAtauMotor, 
+              layanan: layananLabel,
+              driver_id: "", 
+              timestamp: Date.now()
+            };
+
+            db.ref('orders/' + orderId).set(orderPayload).then(() => { 
+              if (this.metodePembayaran === 'Saldo') {
+                db.ref('mutasi_saldo').push({ 
+                  user_id: currentCustomerId, 
+                  nominal: totalBayar, 
+                  jenis: 'OUT', 
+                  keterangan: 'Pembayaran Pesanan #' + orderId, 
+                  timestamp: Date.now() 
+                });
+              }
+
+              this.showAlert("✅ Pesanan berhasil dikirim!"); 
+              this.isSubmitting = false; 
+              this.showFormOrderModal = false; 
+              this.cart = []; 
+              this.currentPage = 'orders'; 
+            }).catch((err) => {
+              this.showAlert("❌ Gagal mengirim pesanan: " + err.message);
+              this.isSubmitting = false;
+            });
+          };
+
+          if (this.metodePembayaran === 'Saldo') {
+            db.ref('customers/' + currentCustomerId + '/saldo').transaction(currentSaldo => {
+              let s = Number(currentSaldo) || 0;
+              if (s < totalBayar) return; 
+              return s - totalBayar;
+            }, (err, committed) => {
+              if (err || !committed) {
+                this.showAlert("❌ Saldo tidak mencukupi atau terjadi kesalahan transaksi.");
+                this.isSubmitting = false;
+                return;
+              }
+              eksekusiBuatOrder();
+            });
+          } else {
+            eksekusiBuatOrder();
+          }
+        },
+
+        sendCustomerChat() {
+          if (!this.chatInputText.trim() || !currentCustomerId) return;
+          let msgId = 'CHAT_' + Date.now(), text = this.chatInputText.trim(); this.chatInputText = '';
+          db.ref('customer_chats/' + currentCustomerId + '/' + msgId).set({ id: msgId, pengirim: 'customer', pesan: text, waktu: Date.now(), dibaca: false });
+        },
+
+        hapusChatHistory() {
+          if (!currentCustomerId) return;
+          if (confirm('Hapus seluruh riwayat chat dengan Admin?')) {
+            db.ref('customer_chats/' + currentCustomerId).remove().then(() => {
+              this.showAlert('✅ Riwayat chat dihapus.');
+            });
+          }
+        },
+
+        openDriverTracking(ord) {
+          this.activeTrackOrder = ord; this.showTrackModal = true;
+          this.$nextTick(() => {
+            setTimeout(() => {
+              let mapEl = document.getElementById('driver-track-map'); if (!mapEl) return;
+              let dLat = ord.lat_jemput || -2.9818, dLng = ord.lng_jemput || 112.9739;
+              
+              let trackCenter = { lat: dLat, lng: dLng };
+              trackingGoogle = new google.maps.Map(mapEl, {
+                center: trackCenter,
+                zoom: 15,
+                disableDefaultUI: true
+              });
+
+              trackingDriverMarkerGoogle = new google.maps.Marker({
+                position: trackCenter,
+                map: trackingGoogle,
+                title: 'Posisi Driver',
+                icon: pinCursorIconAsal
+              });
+
+              if (trackingRef) { trackingRef.off(); trackingRef = null; }
+              if (ord.driver_id) {
+                trackingRef = db.ref('drivers/' + ord.driver_id);
+                trackingRef.on('value', snap => {
+                  if (snap.exists() && snap.val().lat && snap.val().lng && trackingDriverMarkerGoogle) {
+                    let newLat = Number(snap.val().lat), newLng = Number(snap.val().lng);
+                    let newPos = { lat: newLat, lng: newLng };
+                    trackingDriverMarkerGoogle.setPosition(newPos); 
+                    trackingGoogle.setCenter(newPos);
+                  }
+                });
+              }
+            }, 300);
+          });
+        },
+
+        tutupTrackingModal() {
+          this.showTrackModal = false;
+          if (trackingDriverMarkerGoogle) { trackingDriverMarkerGoogle.setMap(null); trackingDriverMarkerGoogle = null; }
+          trackingGoogle = null;
+          if (trackingRef) { trackingRef.off(); trackingRef = null; }
+        },
+
+        batalkanPesanan(ord) {
+          if(!confirm('Yakin membatalkan pesanan ini?')) return;
+          if (this.isCancelling) return;
+          
+          this.isCancelling = true;
+
+          db.ref('orders/' + ord.id).update({ status: 'dibatalkan', alasan_batal: 'Dibatalkan oleh Pelanggan' }).then(() => {
+            if(ord.metode_pembayaran === 'Saldo') {
+               let refundAmount = Number(ord.harga_total) || 0;
+               db.ref('customers/' + currentCustomerId + '/saldo').transaction(currentSaldo => {
+                 return (Number(currentSaldo) || 0) + refundAmount;
+               });
+               db.ref('mutasi_saldo').push({ user_id: currentCustomerId, nominal: refundAmount, jenis: 'IN', keterangan: 'Refund Order #' + ord.id, timestamp: Date.now() });
+            }
+            this.showAlert('❌ Pesanan dibatalkan.');
+            this.isCancelling = false;
+          }).catch(err => {
+            this.showAlert('❌ Gagal membatalkan: ' + err.message);
+            this.isCancelling = false;
+          });
+        },
+
+        prosesGantiFotoProfil(e) {
+          let input = e.target;
+          if (input.files && input.files[0]) {
+            let reader = new FileReader();
+            reader.onload = (evt) => {
+              let img = new Image(); img.src = evt.target.result;
+              img.onload = () => {
+                let canvas = document.createElement('canvas'), max = 200, w = img.width, h = img.height;
+                if (w > h) { if (w > max) { h *= max / w; w = max; } } else { if (h > max) { w *= max / h; h = max; } }
+                canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                let compressed = canvas.toDataURL('image/jpeg', 0.7);
+                db.ref('customers/' + currentCustomerId + '/foto').set(compressed).then(() => { this.userPhoto = compressed; localStorage.setItem('siapjek_cust_photo', compressed); this.showAlert('✅ Foto profil diperbarui!'); });
+              }
+            };
+            reader.readAsDataURL(input.files[0]);
+          }
+        },
+
+        kirimLaporanKeWA(ref, kendala, pesan) { this.sendWA(`Halo Admin SiapJek, laporan kendala:\nPelapor: ${this.userName} (${this.userPhone})\nRef: ${ref || '-'}\nKendala: ${kendala}\nPesan: ${pesan || '-'}`); this.showLaporModal = false; },
+        kirimPendaftaranDriverWA(n, h, p) { if (!n || !h || !p) return this.showAlert('⚠️ Lengkapi kolom!'); this.sendWA(`Halo Admin SiapJek, daftar Driver:\nNama: ${n}\nWA: ${h}\nPlat: ${p}`); },
+        kirimPendaftaranMitraWA(p, t, h, a) { if (!p || !t || !h || !a) return this.showAlert('⚠️ Lengkapi kolom!'); this.sendWA(`Halo Admin SiapJek, daftar Mitra:\nPemilik: ${p}\nToko: ${t}\nWA: ${h}\nAlamat: ${a}`); },
+
+        hitungJarakKm(lat1, lon1, lat2, lon2) {
+          let R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+          let a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+          let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          return R * c;
+        },
+
+        getFilteredTabProducts() {
+          if (!this.allProductsList || this.allProductsList.length === 0) return [];
+          let mitraProducts = this.allProductsList.filter(p => {
+            let merchantObj = this.getMerchantByTokoId(p.tokoId);
+            return merchantObj && merchantObj.isMitra === true;
+          });
+
+          let keyword = this.searchKeyword.trim();
+          if (keyword.length >= 2) {
+            let k = keyword.toLowerCase();
+            return mitraProducts.filter(p => 
+              p.name.toLowerCase().includes(k) || 
+              (this.getMerchantByTokoId(p.tokoId)?.name.toLowerCase().includes(k)) ||
+              (p.description && p.description.toLowerCase().includes(k))
+            );
+          } else if (keyword.length === 1) {
+            return mitraProducts.slice(0, 10);
+          }
+
+          if (this.activeTab === 'terbaru') { return mitraProducts.slice(-15).reverse(); }
+          if (this.activeTab === 'terlaris') { return [...mitraProducts].sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0)).slice(0, 15); }
+          if (this.activeTab === 'terdekat') {
+            return [...mitraProducts].sort((a, b) => {
+              let tokoA = this.getMerchantByTokoId(a.tokoId) || {}, tokoB = this.getMerchantByTokoId(b.tokoId) || {};
+              let distA = this.hitungJarakKm(this.latAsalToko, this.lngAsalToko, tokoA.lat || this.latAsalToko, tokoA.lng || this.latAsalToko);
+              let distB = this.hitungJarakKm(this.latAsalToko, this.lngAsalToko, tokoB.lat || this.latAsalToko, tokoB.lng || this.latAsalToko);
+              return distA - distB;
+            }).slice(0, 15);
+          }
+          if (this.activeTab === 'terpromo') { return mitraProducts.filter(p => p.isPromo).slice(0, 15); }
+          return mitraProducts.slice(0, 15);
+        },
+
+        getTabLabel() { return { terbaru: 'Terbaru', terlaris: 'Terlaris', terdekat: 'Terdekat', terpromo: 'Terpromo' }[this.activeTab] || 'Spesial'; },
+        
+        openCategory(cName) { 
+          this.selectedCategory = cName.trim(); this.currentPage = cName.toLowerCase() === 'lainnya' ? 'lainnya' : 'merchants'; 
+          window.history.pushState({ page: this.currentPage }, ''); window.scrollTo({top: 0, behavior: 'smooth'}); 
+        },
+
+        openMerchantProducts(m) { this.selectedMerchant = m; this.currentPage = 'products'; window.history.pushState({ page: 'products' }, ''); window.scrollTo({top: 0, behavior: 'smooth'}); },
+        goHome(pushState = true) { this.currentPage = 'home'; this.selectedCategory = ''; this.selectedMerchant = null; this.searchKeyword = ''; if(pushState) window.history.pushState({ page: 'home' }, ''); window.scrollTo({top: 0, behavior: 'smooth'}); this.$nextTick(() => { if (this.promoSwiperInstance) this.promoSwiperInstance.update(); }); },
+        
+        getMerchantsByCategory() { 
+          let targetCat = this.selectedCategory.toLowerCase(); return this.merchants.filter(m => String(m.category).trim().toLowerCase() === targetCat); 
+        },
+
+        getCurrentMerchantProducts() { return this.selectedMerchant ? (this.productsMap[String(this.selectedMerchant.id)] || []) : []; },
+        
+        addToCart(product) {
+          let merchantObj = this.getMerchantByTokoId(product.tokoId);
+          if (merchantObj && !merchantObj.is_open) return this.showAlert('⚠️ Toko Sedang Tutup.');
+          if (!product.isAvailable) return this.showAlert('⚠️ Stok produk sedang habis.');
+          if (this.cart.length > 0 && String(this.cart[0].tokoId) !== String(product.tokoId)) return this.showAlert('⚠️ Memesan hanya bisa dari 1 Toko.');
+          let existing = this.cart.find(item => item.id === product.id && !item.variant);
+          if (existing) existing.qty++; else this.cart.push({ ...product, qty: 1 });
+          this.triggerFlyBadge(product.id);
+        },
+
+        decreaseCartItem(i) { if (this.cart[i].qty > 1) this.cart[i].qty--; else this.cart.splice(i, 1); },
+        increaseCartItem(i) { this.cart[i].qty++; },
+        removeCartItem(i) { if (confirm('Hapus menu ini dari keranjang?')) { this.cart.splice(i, 1); } },
+        triggerFlyBadge(productId) { let bId = Date.now() + Math.random(); this.flyingBadges.push({ id: bId, productId: productId }); setTimeout(() => { this.flyingBadges = this.flyingBadges.filter(b => b.id !== bId); }, 800); },
+        getTotalItems() { return this.cart.reduce((t, i) => t + i.qty, 0); },
+        getTotalPrice() { return this.cart.reduce((t, i) => t + (i.price * i.qty), 0); },
+        
+        getActiveOrdersCount() {
+          if (!this.myOrders || !Array.isArray(this.myOrders) || this.myOrders.length === 0) return 0;
+          
+          const activeStatuses = [
+            'pending', 
+            'waiting_merchant', 
+            'diproses_mitra', 
+            'waiting_driver', 
+            'diproses', 
+            'menuju_lokasi', 
+            'diantar', 
+            'diambil_driver', 
+            'driver_tiba',
+            'sampai_lokasi',
+            'mengantar'
+          ];
+
+          return this.myOrders.filter(o => {
+            if (!o || !o.status) return false;
+            const currentStatus = String(o.status).toLowerCase().trim();
+            return activeStatuses.includes(currentStatus);
+          }).length;
+        },
+
+        initPromoSwiper() {
+          this.$nextTick(() => {
+            setTimeout(() => {
+              let el = document.querySelector('.myPromoSwiper');
+              if (typeof Swiper !== 'undefined' && el && this.adminPromos.length > 0) {
+                if (this.promoSwiperInstance) {
+                  this.promoSwiperInstance.destroy(true, true);
+                  this.promoSwiperInstance = null;
+                }
+                this.promoSwiperInstance = new Swiper('.myPromoSwiper', { 
+                  loop: this.adminPromos.length > 1, 
+                  autoplay: { delay: 4000, disableOnInteraction: false }, 
+                  spaceBetween: 10, 
+                  pagination: { el: '.promo-pagination', clickable: true } 
+                });
+              }
+            }, 150);
+          });
+        }
+      }));
+    });
+  </script>
+</body>
+</html>
