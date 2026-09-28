@@ -1,2 +1,0 @@
-# Siapjek-samuda
-Aplikasi siapjek
